@@ -1,4 +1,4 @@
-import type { Food, Macros } from "./types";
+import type { Food, Nutrients } from "./types";
 
 /**
  * Mapping for the USDA FoodData Central search API. Kept free of any network
@@ -16,6 +16,13 @@ const NUTRIENT_IDS = {
   protein: 1003,
   fat: 1004,
   carbs: 1005,
+  fiber: 1079,
+  /** "Sugars, total including NLEA"; older records use 1063. */
+  sugar: 2000,
+  sugarLegacy: 1063,
+  satFat: 1258,
+  sodium: 1093,
+  cholesterol: 1253,
 } as const;
 
 export type UsdaNutrient = {
@@ -65,12 +72,20 @@ function energyKcal(food: UsdaFood): number {
 }
 
 /** USDA search results report nutrients per 100 g, which is what we store. */
-function macrosPer100g(food: UsdaFood): Macros {
+function nutrientsPer100g(food: UsdaFood): Nutrients {
   return {
     kcal: energyKcal(food),
     protein: nutrientValue(food, NUTRIENT_IDS.protein) ?? 0,
     carbs: nutrientValue(food, NUTRIENT_IDS.carbs) ?? 0,
     fat: nutrientValue(food, NUTRIENT_IDS.fat) ?? 0,
+    fiber: nutrientValue(food, NUTRIENT_IDS.fiber) ?? 0,
+    sugar:
+      nutrientValue(food, NUTRIENT_IDS.sugar) ??
+      nutrientValue(food, NUTRIENT_IDS.sugarLegacy) ??
+      0,
+    satFat: nutrientValue(food, NUTRIENT_IDS.satFat) ?? 0,
+    sodium: nutrientValue(food, NUTRIENT_IDS.sodium) ?? 0,
+    cholesterol: nutrientValue(food, NUTRIENT_IDS.cholesterol) ?? 0,
   };
 }
 
@@ -101,7 +116,7 @@ export function toFood(food: UsdaFood): Food {
     brand: (food.brandName || food.brandOwner)?.trim()
       ? titleCase((food.brandName || food.brandOwner)!.trim())
       : undefined,
-    per100g: macrosPer100g(food),
+    per100g: nutrientsPer100g(food),
     servingGrams: servingGrams(food),
     servingLabel: food.householdServingFullText?.trim() || undefined,
   };

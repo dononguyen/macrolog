@@ -1,4 +1,4 @@
-import type { Goals, Macros } from "@/lib/types";
+import type { Goals, Nutrients } from "@/lib/types";
 
 const RADIUS = 54;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -87,7 +87,7 @@ export function MacroSummary({
   totals,
   goals,
 }: {
-  totals: Macros;
+  totals: Nutrients;
   goals: Goals;
 }) {
   return (

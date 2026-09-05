@@ -3,10 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addEntry } from "@/lib/store";
 import {
+  MACRO_KEYS,
   MEAL_LABELS,
-  scaleMacros,
+  MICRO_KEYS,
+  NUTRIENT_KEYS,
+  NUTRIENT_META,
+  ZERO_NUTRIENTS,
+  mapNutrients,
+  scaleNutrients,
   type Food,
   type MealSlot,
+  type NutrientKey,
 } from "@/lib/types";
 
 const MIN_QUERY_LENGTH = 2;
@@ -284,7 +291,7 @@ function PortionStep({
   const parsed = Number(grams);
   const valid = Number.isFinite(parsed) && parsed > 0;
   const preview = useMemo(
-    () => scaleMacros(food.per100g, valid ? parsed : 0),
+    () => scaleNutrients(food.per100g, valid ? parsed : 0),
     [food.per100g, parsed, valid],
   );
 
@@ -394,24 +401,41 @@ function ManualStep({
   onDone: () => void;
 }) {
   const [name, setName] = useState("");
-  const [kcal, setKcal] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [showMore, setShowMore] = useState(false);
 
-  const num = (v: string) => (v.trim() === "" ? 0 : Number(v));
+  const num = (key: NutrientKey) => {
+    const raw = values[key]?.trim();
+    return raw ? Number(raw) : 0;
+  };
+
   const valid =
     name.trim().length > 0 &&
-    [kcal, protein, carbs, fat].every(
-      (v) => v.trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0),
-    );
+    NUTRIENT_KEYS.every((key) => {
+      const raw = values[key]?.trim();
+      return !raw || (Number.isFinite(Number(raw)) && Number(raw) >= 0);
+    });
 
-  const fields: [string, string, (v: string) => void][] = [
-    ["Calories (kcal)", kcal, setKcal],
-    ["Protein (g)", protein, setProtein],
-    ["Carbs (g)", carbs, setCarbs],
-    ["Fat (g)", fat, setFat],
-  ];
+  const field = (key: NutrientKey) => (
+    <div key={key}>
+      <label className="block text-sm font-medium" htmlFor={`manual-${key}`}>
+        {NUTRIENT_META[key].label}{" "}
+        <span className="font-normal text-muted">
+          ({NUTRIENT_META[key].unit})
+        </span>
+      </label>
+      <input
+        id={`manual-${key}`}
+        type="number"
+        inputMode="decimal"
+        min="0"
+        value={values[key] ?? ""}
+        onChange={(e) => setValues({ ...values, [key]: e.target.value })}
+        placeholder="0"
+        className="tabular mt-1.5 w-full rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-base outline-none focus:border-accent"
+      />
+    </div>
+  );
 
   return (
     <>
@@ -443,21 +467,21 @@ function ManualStep({
         </p>
 
         <div className="mt-2 grid grid-cols-2 gap-3">
-          {fields.map(([label, value, set]) => (
-            <div key={label}>
-              <label className="block text-sm font-medium">{label}</label>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                value={value}
-                onChange={(e) => set(e.target.value)}
-                placeholder="0"
-                className="tabular mt-1.5 w-full rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-base outline-none focus:border-accent"
-              />
-            </div>
-          ))}
+          {(["kcal", ...MACRO_KEYS] as NutrientKey[]).map(field)}
         </div>
+
+        <button
+          onClick={() => setShowMore(!showMore)}
+          className="mt-4 text-sm font-medium text-accent"
+        >
+          {showMore ? "Hide" : "Add"} fibre, sugar, sodium…
+        </button>
+
+        {showMore && (
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            {(MICRO_KEYS as readonly NutrientKey[]).map(field)}
+          </div>
+        )}
       </div>
 
       <footer className="border-t border-border p-3">
@@ -474,12 +498,7 @@ function ManualStep({
               food: {
                 id: crypto.randomUUID(),
                 name: name.trim(),
-                per100g: {
-                  kcal: num(kcal),
-                  protein: num(protein),
-                  carbs: num(carbs),
-                  fat: num(fat),
-                },
+                per100g: mapNutrients(ZERO_NUTRIENTS, (_, key) => num(key)),
               },
             });
             onDone();

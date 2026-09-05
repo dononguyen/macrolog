@@ -3,8 +3,8 @@
 import { removeEntry } from "@/lib/store";
 import {
   MEAL_LABELS,
-  scaleMacros,
-  totalMacros,
+  scaleNutrients,
+  totalNutrients,
   type Entry,
   type MealSlot,
 } from "@/lib/types";
@@ -18,7 +18,7 @@ export function MealSection({
   entries: Entry[];
   onAdd: () => void;
 }) {
-  const totals = totalMacros(entries);
+  const totals = totalNutrients(entries);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-surface">
@@ -32,7 +32,7 @@ export function MealSection({
       {entries.length > 0 && (
         <ul className="divide-y divide-border border-t border-border">
           {entries.map((entry) => {
-            const macros = scaleMacros(entry.food.per100g, entry.grams);
+            const macros = scaleNutrients(entry.food.per100g, entry.grams);
             return (
               <li
                 key={entry.id}
