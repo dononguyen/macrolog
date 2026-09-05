@@ -59,7 +59,7 @@ const inputClass =
   "w-full rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-base outline-none placeholder:text-muted focus:border-accent";
 
 export function TextInput(
-  props: React.InputHTMLAttributes<HTMLInputElement> & { numeric?: boolean },
+  props: React.ComponentPropsWithRef<"input"> & { numeric?: boolean },
 ) {
   const { numeric, className = "", ...rest } = props;
   return (
@@ -71,7 +71,7 @@ export function TextInput(
 }
 
 export function NumberInput(
-  props: React.InputHTMLAttributes<HTMLInputElement> & { suffix?: string },
+  props: React.ComponentPropsWithRef<"input"> & { suffix?: string },
 ) {
   const { suffix, className = "", ...rest } = props;
   const input = (
@@ -91,7 +91,7 @@ export function NumberInput(
   );
 }
 
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select(props: React.ComponentPropsWithRef<"select">) {
   const { className = "", ...rest } = props;
   return (
     <select
@@ -105,7 +105,7 @@ export function Button({
   variant = "primary",
   className = "",
   ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+}: React.ComponentPropsWithRef<"button"> & {
   variant?: "primary" | "secondary" | "ghost" | "danger";
 }) {
   const styles = {

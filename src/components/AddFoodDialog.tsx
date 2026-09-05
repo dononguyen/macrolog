@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addEntry } from "@/lib/store";
+import { addEntries, addEntry, foodKey, toggleFavorite } from "@/lib/store";
+import type { AppState } from "@/lib/store";
 import {
   MACRO_KEYS,
   MEAL_LABELS,
@@ -9,17 +10,29 @@ import {
   NUTRIENT_KEYS,
   NUTRIENT_META,
   ZERO_NUTRIENTS,
+  componentsNutrients,
   mapNutrients,
+  recipeToFood,
   scaleNutrients,
+  type Component,
   type Food,
   type MealSlot,
   type NutrientKey,
 } from "@/lib/types";
+import { Button, EmptyState, Field, NumberInput, TextInput } from "./ui";
 
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 350;
 
-type Step = "search" | "portion" | "manual";
+type Step = "browse" | "portion" | "manual";
+type Tab = "recents" | "favourites" | "meals" | "recipes";
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "recents", label: "Recent" },
+  { value: "favourites", label: "Starred" },
+  { value: "meals", label: "Meals" },
+  { value: "recipes", label: "Recipes" },
+];
 
 /** The outcome of one completed search, tagged with the query it answers. */
 type SearchState = {
@@ -32,15 +45,16 @@ type SearchState = {
 export function AddFoodDialog({
   date,
   meal,
-  recents,
+  state,
   onClose,
 }: {
   date: string;
   meal: MealSlot;
-  recents: Food[];
+  state: AppState;
   onClose: () => void;
 }) {
-  const [step, setStep] = useState<Step>("search");
+  const [step, setStep] = useState<Step>("browse");
+  const [tab, setTab] = useState<Tab>("recents");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState<SearchState | null>(null);
   const [selected, setSelected] = useState<Food | null>(null);
@@ -107,6 +121,14 @@ export function AddFoodDialog({
     };
   }, [query]);
 
+  /** Saved meals go straight in — their portions were fixed when saved. */
+  const logComponents = (components: Component[]) => {
+    addEntries(
+      components.map((c) => ({ date, meal, food: c.food, grams: c.grams })),
+    );
+    onClose();
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4"
@@ -114,7 +136,7 @@ export function AddFoodDialog({
       role="presentation"
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-border bg-surface shadow-2xl sm:rounded-2xl"
+        className="flex h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-border bg-surface shadow-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -125,30 +147,34 @@ export function AddFoodDialog({
             food={selected}
             date={date}
             meal={meal}
-            onBack={() => setStep("search")}
+            favourite={state.favorites.includes(foodKey(selected))}
+            onBack={() => setStep("browse")}
             onDone={onClose}
           />
         ) : step === "manual" ? (
           <ManualStep
             date={date}
             meal={meal}
-            onBack={() => setStep("search")}
+            onBack={() => setStep("browse")}
             onDone={onClose}
           />
         ) : (
-          <SearchStep
+          <BrowseStep
             meal={meal}
+            state={state}
             query={query}
             setQuery={setQuery}
+            tab={tab}
+            setTab={setTab}
             active={active}
             results={results}
-            recents={recents}
             searching={searching}
             error={error}
             onPick={(food) => {
               setSelected(food);
               setStep("portion");
             }}
+            onLogComponents={logComponents}
             onManual={() => setStep("manual")}
             onClose={onClose}
           />
@@ -158,30 +184,80 @@ export function AddFoodDialog({
   );
 }
 
-// ------------------------------------------------------------------ search
+// ------------------------------------------------------------------ browse
 
-function SearchStep({
+function FoodRow({
+  food,
+  subtitle,
+  favourite,
+  onPick,
+  onToggleFavourite,
+}: {
+  food: Food;
+  subtitle?: string;
+  favourite?: boolean;
+  onPick: () => void;
+  onToggleFavourite?: () => void;
+}) {
+  const summary = `${food.brand ? `${food.brand} · ` : ""}${Math.round(
+    food.per100g.kcal,
+  )} kcal · ${Math.round(food.per100g.protein)}p ${Math.round(
+    food.per100g.carbs,
+  )}c ${Math.round(food.per100g.fat)}f per 100 g`;
+
+  return (
+    <li className="flex items-center">
+      <button
+        onClick={onPick}
+        className="min-w-0 flex-1 px-4 py-3 text-left hover:bg-sunken"
+      >
+        <p className="truncate text-sm font-medium">{food.name}</p>
+        <p className="tabular mt-0.5 text-xs text-muted">{subtitle ?? summary}</p>
+      </button>
+      {onToggleFavourite && (
+        <button
+          onClick={onToggleFavourite}
+          aria-label={favourite ? `Unstar ${food.name}` : `Star ${food.name}`}
+          aria-pressed={favourite}
+          className={`shrink-0 px-4 py-3 text-lg leading-none transition-colors ${
+            favourite ? "text-carbs" : "text-muted hover:text-fg"
+          }`}
+        >
+          {favourite ? "★" : "☆"}
+        </button>
+      )}
+    </li>
+  );
+}
+
+function BrowseStep({
   meal,
+  state,
   query,
   setQuery,
+  tab,
+  setTab,
   active,
   results,
-  recents,
   searching,
   error,
   onPick,
+  onLogComponents,
   onManual,
   onClose,
 }: {
   meal: MealSlot;
+  state: AppState;
   query: string;
   setQuery: (v: string) => void;
+  tab: Tab;
+  setTab: (t: Tab) => void;
   active: boolean;
   results: Food[] | null;
-  recents: Food[];
   searching: boolean;
   error: string | null;
   onPick: (f: Food) => void;
+  onLogComponents: (c: Component[]) => void;
   onManual: () => void;
   onClose: () => void;
 }) {
@@ -190,8 +266,12 @@ function SearchStep({
     inputRef.current?.focus();
   }, []);
 
-  const showingRecents = !active;
-  const list = showingRecents ? recents : results;
+  const favouriteFoods = useMemo(
+    () => state.library.filter((f) => state.favorites.includes(foodKey(f))),
+    [state.library, state.favorites],
+  );
+
+  const isFavourite = (food: Food) => state.favorites.includes(foodKey(food));
 
   return (
     <>
@@ -206,67 +286,155 @@ function SearchStep({
       </header>
 
       <div className="border-b border-border p-4">
-        <input
+        <TextInput
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search foods, e.g. greek yogurt"
-          className="w-full rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-base outline-none placeholder:text-muted focus:border-accent"
         />
       </div>
 
+      {!active && (
+        <div className="flex gap-1 border-b border-border px-3 py-2">
+          {TABS.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => setTab(t.value)}
+              aria-pressed={tab === t.value}
+              className={`flex-1 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors ${
+                tab === t.value ? "bg-sunken text-fg" : "text-muted hover:text-fg"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {error && <p className="px-4 py-3 text-sm text-danger">{error}</p>}
-
-        {searching && (
-          <p className="px-4 py-6 text-center text-sm text-muted">Searching…</p>
-        )}
-
-        {!searching && list && list.length > 0 && (
+        {active ? (
           <>
-            {showingRecents && (
-              <p className="px-4 pt-3 text-xs font-medium uppercase tracking-wide text-muted">
-                Recent
+            {error && <p className="px-4 py-3 text-sm text-danger">{error}</p>}
+            {searching && (
+              <p className="px-4 py-6 text-center text-sm text-muted">
+                Searching…
               </p>
             )}
+            {!searching && results && results.length > 0 && (
+              <ul className="divide-y divide-border">
+                {results.map((food) => (
+                  <FoodRow
+                    key={food.id}
+                    food={food}
+                    favourite={isFavourite(food)}
+                    onPick={() => onPick(food)}
+                    onToggleFavourite={() => toggleFavorite(food)}
+                  />
+                ))}
+              </ul>
+            )}
+            {!searching && !error && results && results.length === 0 && (
+              <EmptyState title="No matches found" />
+            )}
+          </>
+        ) : tab === "recents" ? (
+          state.library.length === 0 ? (
+            <EmptyState
+              title="Nothing logged yet"
+              hint="Search above to find a food, or enter the macros by hand."
+            />
+          ) : (
             <ul className="divide-y divide-border">
-              {list.map((food) => (
-                <li key={food.id}>
-                  <button
-                    onClick={() => onPick(food)}
-                    className="w-full px-4 py-3 text-left hover:bg-sunken"
-                  >
-                    <p className="text-sm font-medium">{food.name}</p>
-                    <p className="tabular mt-0.5 text-xs text-muted">
-                      {food.brand ? `${food.brand} · ` : ""}
-                      {Math.round(food.per100g.kcal)} kcal ·{" "}
-                      {Math.round(food.per100g.protein)}p{" "}
-                      {Math.round(food.per100g.carbs)}c{" "}
-                      {Math.round(food.per100g.fat)}f per 100 g
-                    </p>
-                  </button>
-                </li>
+              {state.library.map((food) => (
+                <FoodRow
+                  key={foodKey(food)}
+                  food={food}
+                  favourite={isFavourite(food)}
+                  onPick={() => onPick(food)}
+                  onToggleFavourite={() => toggleFavorite(food)}
+                />
               ))}
             </ul>
-          </>
-        )}
-
-        {!searching && !error && list && list.length === 0 && (
-          <p className="px-4 py-6 text-center text-sm text-muted">
-            {showingRecents
-              ? "Nothing logged yet — search to get started."
-              : "No matches found."}
-          </p>
+          )
+        ) : tab === "favourites" ? (
+          favouriteFoods.length === 0 ? (
+            <EmptyState
+              title="No starred foods"
+              hint="Tap the star beside a food to keep it here."
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {favouriteFoods.map((food) => (
+                <FoodRow
+                  key={foodKey(food)}
+                  food={food}
+                  favourite
+                  onPick={() => onPick(food)}
+                  onToggleFavourite={() => toggleFavorite(food)}
+                />
+              ))}
+            </ul>
+          )
+        ) : tab === "meals" ? (
+          state.savedMeals.length === 0 ? (
+            <EmptyState
+              title="No saved meals"
+              hint="Log a meal, then use Save as meal on the diary to keep it."
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {state.savedMeals.map((savedMeal) => {
+                const totals = componentsNutrients(savedMeal.components);
+                return (
+                  <li key={savedMeal.id}>
+                    <button
+                      onClick={() => onLogComponents(savedMeal.components)}
+                      className="w-full px-4 py-3 text-left hover:bg-sunken"
+                    >
+                      <p className="text-sm font-medium">{savedMeal.name}</p>
+                      <p className="tabular mt-0.5 text-xs text-muted">
+                        {savedMeal.components.length} item
+                        {savedMeal.components.length === 1 ? "" : "s"} ·{" "}
+                        {Math.round(totals.kcal).toLocaleString()} kcal
+                      </p>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )
+        ) : state.recipes.length === 0 ? (
+          <EmptyState
+            title="No recipes yet"
+            hint="Build one on the Foods tab to log it by the serving."
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {state.recipes.map((recipe) => {
+              const food = recipeToFood(recipe);
+              const perServing = scaleNutrients(
+                food.per100g,
+                food.servingGrams ?? 100,
+              );
+              return (
+                <FoodRow
+                  key={recipe.id}
+                  food={food}
+                  subtitle={`${recipe.servings} serving${
+                    recipe.servings === 1 ? "" : "s"
+                  } · ${Math.round(perServing.kcal).toLocaleString()} kcal each`}
+                  onPick={() => onPick(food)}
+                />
+              );
+            })}
+          </ul>
         )}
       </div>
 
       <footer className="border-t border-border p-3">
-        <button
-          onClick={onManual}
-          className="w-full rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-sunken"
-        >
+        <Button variant="secondary" className="w-full" onClick={onManual}>
           Enter macros manually
-        </button>
+        </Button>
       </footer>
     </>
   );
@@ -278,12 +446,14 @@ function PortionStep({
   food,
   date,
   meal,
+  favourite,
   onBack,
   onDone,
 }: {
   food: Food;
   date: string;
   meal: MealSlot;
+  favourite: boolean;
   onBack: () => void;
   onDone: () => void;
 }) {
@@ -301,11 +471,11 @@ function PortionStep({
     return [...values].sort((a, b) => a - b);
   }, [food.servingGrams]);
 
-  const tiles: [string, string, string][] = [
-    ["kcal", Math.round(preview.kcal).toLocaleString(), "var(--fg)"],
-    ["protein", `${Math.round(preview.protein)} g`, "var(--protein)"],
-    ["carbs", `${Math.round(preview.carbs)} g`, "var(--carbs)"],
-    ["fat", `${Math.round(preview.fat)} g`, "var(--fat)"],
+  const tiles: [NutrientKey, string][] = [
+    ["kcal", "var(--fg)"],
+    ["protein", "var(--protein)"],
+    ["carbs", "var(--carbs)"],
+    ["fat", "var(--fat)"],
   ];
 
   return (
@@ -318,7 +488,16 @@ function PortionStep({
           Back
         </button>
         <h2 className="font-semibold">Portion</h2>
-        <span className="w-12" />
+        <button
+          onClick={() => toggleFavorite(food)}
+          aria-label={favourite ? "Unstar this food" : "Star this food"}
+          aria-pressed={favourite}
+          className={`px-2 text-lg leading-none ${
+            favourite ? "text-carbs" : "text-muted hover:text-fg"
+          }`}
+        >
+          {favourite ? "★" : "☆"}
+        </button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -326,25 +505,23 @@ function PortionStep({
         {food.brand && <p className="text-sm text-muted">{food.brand}</p>}
         {food.servingLabel && (
           <p className="mt-1 text-xs text-muted">
-            Label serving: {food.servingLabel}
+            {food.recipeId ? "" : "Label serving: "}
+            {food.servingLabel}
             {food.servingGrams ? ` (${food.servingGrams} g)` : ""}
           </p>
         )}
 
-        <label className="mt-5 block text-sm font-medium" htmlFor="grams">
-          Amount
-        </label>
-        <div className="mt-1.5 flex items-center gap-2">
-          <input
-            id="grams"
-            type="number"
-            inputMode="decimal"
-            min="1"
-            value={grams}
-            onChange={(e) => setGrams(e.target.value)}
-            className="tabular w-32 rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-base outline-none focus:border-accent"
-          />
-          <span className="text-sm text-muted">grams</span>
+        <div className="mt-5">
+          <Field label="Amount" htmlFor="grams">
+            <NumberInput
+              id="grams"
+              min="1"
+              suffix="grams"
+              className="w-32"
+              value={grams}
+              onChange={(e) => setGrams(e.target.value)}
+            />
+          </Field>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -360,11 +537,25 @@ function PortionStep({
         </div>
 
         <dl className="mt-5 grid grid-cols-4 gap-2 rounded-xl bg-sunken p-3 text-center">
-          {tiles.map(([label, value, color]) => (
-            <div key={label}>
-              <dt className="text-xs text-muted">{label}</dt>
+          {tiles.map(([key, color]) => (
+            <div key={key}>
+              <dt className="text-xs text-muted">{NUTRIENT_META[key].label}</dt>
               <dd className="tabular mt-0.5 font-semibold" style={{ color }}>
-                {value}
+                {Math.round(preview[key]).toLocaleString()}
+                {key === "kcal" ? "" : " g"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <dl className="mt-3 grid grid-cols-5 gap-2 text-center">
+          {MICRO_KEYS.map((key) => (
+            <div key={key} className="rounded-xl bg-sunken p-2">
+              <dt className="text-[11px] text-muted">
+                {NUTRIENT_META[key].short}
+              </dt>
+              <dd className="tabular mt-0.5 text-sm">
+                {Math.round(preview[key]).toLocaleString()}
               </dd>
             </div>
           ))}
@@ -372,16 +563,16 @@ function PortionStep({
       </div>
 
       <footer className="border-t border-border p-3">
-        <button
+        <Button
+          className="w-full"
           disabled={!valid}
           onClick={() => {
             addEntry({ date, meal, food, grams: parsed });
             onDone();
           }}
-          className="w-full rounded-xl bg-accent py-2.5 font-medium text-white disabled:opacity-40"
         >
           Add to {MEAL_LABELS[meal]}
-        </button>
+        </Button>
       </footer>
     </>
   );
@@ -404,10 +595,7 @@ function ManualStep({
   const [values, setValues] = useState<Record<string, string>>({});
   const [showMore, setShowMore] = useState(false);
 
-  const num = (key: NutrientKey) => {
-    const raw = values[key]?.trim();
-    return raw ? Number(raw) : 0;
-  };
+  const num = (key: NutrientKey) => Number(values[key] ?? "") || 0;
 
   const valid =
     name.trim().length > 0 &&
@@ -417,24 +605,19 @@ function ManualStep({
     });
 
   const field = (key: NutrientKey) => (
-    <div key={key}>
-      <label className="block text-sm font-medium" htmlFor={`manual-${key}`}>
-        {NUTRIENT_META[key].label}{" "}
-        <span className="font-normal text-muted">
-          ({NUTRIENT_META[key].unit})
-        </span>
-      </label>
-      <input
+    <Field
+      key={key}
+      label={`${NUTRIENT_META[key].label} (${NUTRIENT_META[key].unit})`}
+      htmlFor={`manual-${key}`}
+    >
+      <NumberInput
         id={`manual-${key}`}
-        type="number"
-        inputMode="decimal"
         min="0"
+        placeholder="0"
         value={values[key] ?? ""}
         onChange={(e) => setValues({ ...values, [key]: e.target.value })}
-        placeholder="0"
-        className="tabular mt-1.5 w-full rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-base outline-none focus:border-accent"
       />
-    </div>
+    </Field>
   );
 
   return (
@@ -451,16 +634,14 @@ function ManualStep({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <label className="block text-sm font-medium" htmlFor="manual-name">
-          Food name
-        </label>
-        <input
-          id="manual-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Leftover lasagne"
-          className="mt-1.5 w-full rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-base outline-none placeholder:text-muted focus:border-accent"
-        />
+        <Field label="Food name" htmlFor="manual-name">
+          <TextInput
+            id="manual-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Leftover lasagne"
+          />
+        </Field>
 
         <p className="mt-5 text-xs text-muted">
           Enter the totals for the whole portion you ate.
@@ -485,7 +666,8 @@ function ManualStep({
       </div>
 
       <footer className="border-t border-border p-3">
-        <button
+        <Button
+          className="w-full"
           disabled={!valid}
           onClick={() => {
             // A manual food is defined by the portion eaten, so it is stored as
@@ -503,10 +685,9 @@ function ManualStep({
             });
             onDone();
           }}
-          className="w-full rounded-xl bg-accent py-2.5 font-medium text-white disabled:opacity-40"
         >
           Add to {MEAL_LABELS[meal]}
-        </button>
+        </Button>
       </footer>
     </>
   );

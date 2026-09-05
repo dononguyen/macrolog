@@ -13,20 +13,32 @@ export function MealSection({
   meal,
   entries,
   onAdd,
+  onSaveAsMeal,
 }: {
   meal: MealSlot;
   entries: Entry[];
   onAdd: () => void;
+  onSaveAsMeal: () => void;
 }) {
   const totals = totalNutrients(entries);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-surface">
-      <header className="flex items-baseline justify-between px-4 py-3">
+      <header className="flex items-baseline justify-between gap-3 px-4 py-3">
         <h2 className="font-semibold">{MEAL_LABELS[meal]}</h2>
-        <span className="tabular text-sm text-muted">
-          {Math.round(totals.kcal).toLocaleString()} kcal
-        </span>
+        <div className="flex items-baseline gap-3">
+          {entries.length > 0 && (
+            <button
+              onClick={onSaveAsMeal}
+              className="text-xs font-medium text-accent hover:underline"
+            >
+              Save as meal
+            </button>
+          )}
+          <span className="tabular text-sm text-muted">
+            {Math.round(totals.kcal).toLocaleString()} kcal
+          </span>
+        </div>
       </header>
 
       {entries.length > 0 && (
