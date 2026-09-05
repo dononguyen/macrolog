@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# macrolog
 
-## Getting Started
+A calorie and macro tracker. Log what you eat against a daily calorie,
+protein, carb and fat target.
 
-First, run the development server:
+Built with Next.js (App Router), TypeScript and Tailwind. Food data comes from
+the USDA FoodData Central database.
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Food search API key
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Search works out of the box using USDA's shared `DEMO_KEY`, which is rate
+limited to roughly 30 requests per hour — enough to try the app, not enough to
+use it. A personal key is free and takes about a minute:
 
-## Learn More
+1. Request one at https://fdc.nal.usda.gov/api-key-signup.html
+2. `cp .env.example .env.local`
+3. Paste the key into `USDA_API_KEY` and restart the dev server.
 
-To learn more about Next.js, take a look at the following resources:
+The key is only ever read on the server, in the route below, so it never
+reaches the browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How it works
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  app/
+    page.tsx                    the whole UI: one day at a time
+    api/foods/search/route.ts   proxies USDA search, keeps the key server-side
+  components/                   summary ring, meal lists, add/goals dialogs
+  lib/
+    types.ts                    Food, Entry, Macros, and the maths over them
+    store.ts                    persistence — the only file that touches storage
+    usda.ts                     mapping USDA's payload onto our model
+    date.ts                     local calendar days as YYYY-MM-DD keys
+```
 
-## Deploy on Vercel
+Three ideas hold the rest together:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Macros are stored per 100 g.** Every food, whatever its source, is normalised
+to per-100 g values. A portion is then just a gram multiplier, so every total
+in the app is one scale-and-sum with no unit handling at the call site.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Entries own a copy of their food.** A log entry stores the food itself rather
+than a reference to it. Editing or deleting a food later must never rewrite
+what you already ate.
+
+**Storage lives behind one module.** Everything persists to `localStorage`
+through `src/lib/store.ts`. Nothing else in the app knows where data is kept,
+so moving to a real backend is a change in that one file.
+
+## Data and privacy
+
+Everything is stored in your own browser. There is no account, no server-side
+database, and nothing is uploaded. Clearing site data clears your log, and the
+data does not follow you to another device or browser.
+
+## Scripts
+
+| Command         | What it does                          |
+| --------------- | ------------------------------------- |
+| `npm run dev`   | Development server with hot reload     |
+| `npm run build` | Production build                       |
+| `npm start`     | Serve the production build             |
+| `npm run lint`  | ESLint                                 |
+
+Run `npx tsc --noEmit` for a typecheck without building.
+
+## Not built yet
+
+- Barcode scanning
+- Weight tracking and history charts
+- Saved meals and recipes
+- Copying a previous day's log
