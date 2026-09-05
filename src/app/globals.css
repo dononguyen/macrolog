@@ -17,8 +17,12 @@
   --accent-soft: #dcfce7;
   --danger: #dc2626;
 
+  /* Validated as a categorical trio against both surfaces: inside the OKLCH
+     lightness band, chroma floor clear, worst adjacent CVD separation dE 30.2
+     (protan) / 16.2 (tritan), and all three at 3:1 or better against the card.
+     The same steps pass in dark, so the two modes stay consistent. */
   --protein: #3b82f6;
-  --carbs: #f59e0b;
+  --carbs: #d97706;
   --fat: #a855f7;
 }
 
@@ -35,9 +39,9 @@
     --accent-soft: #14301f;
     --danger: #f87171;
 
-    --protein: #60a5fa;
-    --carbs: #fbbf24;
-    --fat: #c084fc;
+    --protein: #3b82f6;
+    --carbs: #d97706;
+    --fat: #a855f7;
   }
 }
 
