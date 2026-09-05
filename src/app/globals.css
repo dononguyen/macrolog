@@ -1,60 +1,127 @@
 @import "tailwindcss";
 
-/*
+/* ============================================================ tokens
+ *
  * One palette, defined once in light and once in dark. Components only ever
  * reference the semantic names, so a colour change never means grepping for
  * hex codes across the app.
  */
 :root {
-  --bg: #f6f6f7;
+  /* Surfaces, coolest to nearest. `elevated` is what lifts off the page. */
+  --bg: #f4f6f9;
   --surface: #ffffff;
-  --surface-sunken: #f1f1f3;
-  --border: #e3e3e7;
-  --fg: #18181b;
-  --muted: #6b6b76;
+  --elevated: #ffffff;
+  --surface-sunken: #eceff5;
+  --border: #e1e6ef;
+  --border-strong: #ccd3e0;
 
-  --accent: #16a34a;
-  --accent-soft: #dcfce7;
+  /* Ink. `faint` is for text that should recede almost entirely. */
+  --fg: #0e1526;
+  --muted: #5d6a85;
+  --faint: #8492ab;
+
+  /* Brand. `accent` fills; `accent-text` is the step that passes contrast
+     as text on a surface, which the fill step does not. */
+  --accent: #059669;
+  --accent-from: #10b981;
+  --accent-to: #059669;
+  /* Gradient for fills carrying text. White on --accent-from is only 3.77:1,
+     so anything with a label on it uses these darker steps instead. */
+  --accent-fill-from: #047857;
+  --accent-fill-to: #056b4d;
+  --accent-text: #047857;
+  --accent-soft: #d7f5e8;
+  --on-accent: #ffffff;
+
   --danger: #dc2626;
+  --danger-text: #b91c1c;
+  --danger-soft: #fee2e2;
 
-  /* Validated as a categorical trio against both surfaces: inside the OKLCH
-     lightness band, chroma floor clear, worst adjacent CVD separation dE 30.2
-     (protan) / 16.2 (tritan), and all three at 3:1 or better against the card.
-     The same steps pass in dark, so the two modes stay consistent. */
-  --protein: #3b82f6;
-  --carbs: #d97706;
-  --fat: #a855f7;
+  /* Data marks. Validated as a categorical trio against both surfaces:
+     inside the OKLCH lightness band, chroma floor clear, worst adjacent CVD
+     separation dE 31.3 (protan) / 24.2 (tritan), normal-vision floor 35.3,
+     and all three at 3:1 or better against the card. The same steps pass in
+     dark, so one set serves both modes. */
+  --protein: #2563eb;
+  --carbs: #ea580c;
+  --fat: #9333ea;
+
+  /* Depth. Two layered shadows read as light, one reads as a smudge. */
+  --shadow-sm: 0 1px 2px rgb(14 21 38 / 0.04), 0 1px 3px rgb(14 21 38 / 0.06);
+  --shadow-md: 0 2px 4px rgb(14 21 38 / 0.04), 0 8px 20px rgb(14 21 38 / 0.08);
+  --shadow-lg: 0 4px 8px rgb(14 21 38 / 0.06), 0 24px 48px rgb(14 21 38 / 0.14);
+  --ring-glow: 0 0 24px rgb(16 185 129 / 0.28);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b0b0d;
-    --surface: #16161a;
-    --surface-sunken: #1e1e24;
-    --border: #2a2a32;
-    --fg: #f4f4f5;
-    --muted: #9a9aa6;
+    /* Dark surfaces step *up* in lightness as they come forward, which is how
+       elevation reads without light sources. */
+    --bg: #0a0c11;
+    --surface: #14171f;
+    --elevated: #1a1e28;
+    --surface-sunken: #1e232e;
+    --border: #262c3a;
+    --border-strong: #38404f;
 
-    --accent: #22c55e;
-    --accent-soft: #14301f;
-    --danger: #f87171;
+    --fg: #eef1f7;
+    --muted: #93a0b6;
+    --faint: #5f6a7f;
 
-    --protein: #3b82f6;
-    --carbs: #d97706;
-    --fat: #a855f7;
+    --accent: #10b981;
+    --accent-from: #34d399;
+    --accent-to: #10b981;
+    /* Dark mode puts dark ink on a bright fill, which clears the ratio at the
+       vivid steps, so the two gradients coincide here. */
+    --accent-fill-from: #34d399;
+    --accent-fill-to: #10b981;
+    --accent-text: #34d399;
+    --accent-soft: #06301f;
+    --on-accent: #04241a;
+
+    --danger: #f05252;
+    --danger-text: #fca5a5;
+    --danger-soft: #341417;
+
+    --protein: #2563eb;
+    --carbs: #ea580c;
+    --fat: #9333ea;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 8px 20px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.4), 0 24px 48px rgb(0 0 0 / 0.6);
+    --ring-glow: 0 0 28px rgb(16 185 129 / 0.35);
   }
+}
+
+/* Motion. Expo-out for anything that travels; a light overshoot for anything
+   that should feel physical, like a control snapping into place. */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur-base: 260ms;
+  --dur-slow: 480ms;
+  --dur-ring: 900ms;
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
   --color-sunken: var(--surface-sunken);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
   --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
+  --color-danger-soft: var(--danger-soft);
   --color-protein: var(--protein);
   --color-carbs: var(--carbs);
   --color-fat: var(--fat);
@@ -63,12 +130,189 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ============================================================ base */
+
 body {
   background: var(--bg);
   color: var(--fg);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Numbers that update in place should not reflow as digits change. */
 .tabular {
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Headings read better slightly tightened; body text does not. */
+.tight {
+  letter-spacing: -0.02em;
+}
+
+/* A single visible focus treatment, so keyboard users get the same affordance
+   everywhere without each component inventing one. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* ============================================================ motion */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Sweeps once across a bar as it fills, so a full bar still reads as an event
+   rather than just a static block of colour. */
+@keyframes sheen {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up var(--dur-base) var(--ease-out) both;
+}
+
+.animate-fade-in {
+  animation: fade-in var(--dur-base) var(--ease-out) both;
+}
+
+.animate-scale-in {
+  animation: scale-in var(--dur-base) var(--ease-out) both;
+}
+
+.animate-sheet {
+  animation: sheet-up var(--dur-base) var(--ease-out) both;
+}
+
+.animate-pop {
+  animation: pop 420ms var(--ease-spring);
+}
+
+/* A dialog is a sheet rising from the bottom edge on a phone and a panel
+   scaling into the middle on a desktop, so its entrance matches its shape. */
+.animate-panel {
+  animation: sheet-up var(--dur-base) var(--ease-out) both;
+}
+@media (min-width: 640px) {
+  .animate-panel {
+    animation: scale-in var(--dur-base) var(--ease-out) both;
+  }
+}
+
+/* Entrance stagger. Sections declare their order and the delay follows, so a
+   screen assembles top-down instead of appearing all at once. */
+.stagger > * {
+  animation: fade-up var(--dur-base) var(--ease-out) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 45ms; }
+.stagger > *:nth-child(3) { animation-delay: 90ms; }
+.stagger > *:nth-child(4) { animation-delay: 135ms; }
+.stagger > *:nth-child(5) { animation-delay: 180ms; }
+.stagger > *:nth-child(6) { animation-delay: 225ms; }
+.stagger > *:nth-child(7) { animation-delay: 270ms; }
+.stagger > *:nth-child(8) { animation-delay: 315ms; }
+
+/* Anything tappable dips slightly under the finger. */
+.pressable {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+.pressable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Cards lift a little on hover, on pointers that can actually hover. */
+@media (hover: hover) {
+  .liftable {
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+  }
+  .liftable:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/*
+ * Honour the system setting. Motion here is decoration on top of a layout that
+ * already works, so it can be removed wholesale rather than reduced piecemeal.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pressable:active:not(:disabled) {
+    transform: none;
+  }
+  @media (hover: hover) {
+    .liftable:hover {
+      transform: none;
+    }
+  }
 }

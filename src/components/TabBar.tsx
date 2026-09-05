@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * Bottom navigation on phones, where thumbs are, and a top row from small
- * screens up. Fixed to the bottom edge with safe-area padding so it clears
- * the home indicator on iOS.
+ * Bottom navigation on phones, where thumbs are. The active state is a single
+ * pill that slides between tabs, so moving between screens reads as one
+ * continuous thing rather than two separate highlights.
  */
 
 const TABS = [
@@ -18,32 +18,53 @@ const TABS = [
 
 export function TabBar() {
   const pathname = usePathname();
+  const index = Math.max(
+    0,
+    TABS.findIndex((t) => t.href === pathname),
+  );
 
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/90 backdrop-blur-md"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/80 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="mx-auto flex max-w-2xl">
+      <div className="relative mx-auto flex max-w-2xl px-2 py-2">
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-2 left-2 rounded-2xl bg-accent-soft"
+          style={{
+            width: `calc((100% - 1rem) / ${TABS.length})`,
+            transform: `translateX(calc(${index} * 100%))`,
+            transition: "transform var(--dur-base) var(--ease-spring)",
+          }}
+        />
+
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
-            <li key={href} className="flex-1">
-              <Link
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${
-                  active ? "text-accent" : "text-muted hover:text-fg"
-                }`}
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`relative z-10 flex flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-[11px] font-semibold transition-colors duration-200 ${
+                active ? "text-accent-text" : "text-muted hover:text-fg"
+              }`}
+            >
+              <span
+                className="block"
+                style={{
+                  transform: active ? "scale(1.08)" : "scale(1)",
+                  transition: "transform var(--dur-base) var(--ease-spring)",
+                }}
               >
                 <Icon />
-                {label}
-              </Link>
-            </li>
+              </span>
+              {label}
+            </Link>
           );
         })}
-      </ul>
+      </div>
     </nav>
   );
 }
