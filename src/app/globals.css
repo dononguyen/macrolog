@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
+/*
+ * One palette, defined once in light and once in dark. Components only ever
+ * reference the semantic names, so a colour change never means grepping for
+ * hex codes across the app.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --bg: #f6f6f7;
+  --surface: #ffffff;
+  --surface-sunken: #f1f1f3;
+  --border: #e3e3e7;
+  --fg: #18181b;
+  --muted: #6b6b76;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --accent: #16a34a;
+  --accent-soft: #dcfce7;
+  --danger: #dc2626;
+
+  --protein: #3b82f6;
+  --carbs: #f59e0b;
+  --fat: #a855f7;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #0b0b0d;
+    --surface: #16161a;
+    --surface-sunken: #1e1e24;
+    --border: #2a2a32;
+    --fg: #f4f4f5;
+    --muted: #9a9aa6;
+
+    --accent: #22c55e;
+    --accent-soft: #14301f;
+    --danger: #f87171;
+
+    --protein: #60a5fa;
+    --carbs: #fbbf24;
+    --fat: #c084fc;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-protein: var(--protein);
+  --color-carbs: var(--carbs);
+  --color-fat: var(--fat);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Numbers that update in place should not reflow as digits change. */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
