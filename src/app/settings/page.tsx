@@ -10,6 +10,7 @@ import {
   Select,
   Toggle,
 } from "@/components/ui";
+import { PageHeader } from "@/components/PageHeader";
 import {
   ACTIVITY_LEVELS,
   MACRO_SPLITS,
@@ -65,12 +66,14 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 px-4 pb-28 pt-6 sm:px-6">
-      <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
+    <main className="mx-auto w-full max-w-2xl px-4 pb-28 sm:px-6">
+      <PageHeader title="Settings" subtitle="Your profile, targets and preferences" />
+
+      <div className="stagger space-y-3.5">
 
       {/* ------------------------------------------------------- profile */}
       <Card title="About you">
-        <div className="space-y-4 px-4 pb-4">
+        <div className="space-y-4 px-5 pb-5">
           <p className="text-sm text-muted">
             Used to estimate how much you burn. Nothing leaves your browser.
           </p>
@@ -234,7 +237,7 @@ export default function SettingsPage() {
 
       {/* ------------------------------------------------ calculated plan */}
       <Card title="Your calculated targets">
-        <div className="space-y-4 px-4 pb-4">
+        <div className="space-y-4 px-5 pb-5">
           <dl className="grid grid-cols-3 gap-2 rounded-xl bg-sunken p-3 text-center">
             {[
               ["Resting burn", Math.round(bmr(draft))],
@@ -256,7 +259,7 @@ export default function SettingsPage() {
           </p>
 
           {clamped && (
-            <p className="rounded-xl bg-sunken p-3 text-xs text-danger">
+            <p className="rounded-xl bg-sunken p-3 text-xs text-danger-text">
               That rate would put you below {draft.sex === "male" ? "1,500" : "1,200"}{" "}
               kcal, so the target has been held there. Choose a slower rate for a
               deficit you can actually keep to.
@@ -309,7 +312,7 @@ export default function SettingsPage() {
 
       {/* --------------------------------------------------- preferences */}
       <Card title="Preferences">
-        <div className="space-y-4 px-4 pb-4">
+        <div className="space-y-4 px-5 pb-5">
           <Field label="Units">
             <SegmentedControl
               label="Units"
@@ -335,7 +338,7 @@ export default function SettingsPage() {
 
       {/* ---------------------------------------------------------- data */}
       <Card title="Your data">
-        <div className="space-y-3 px-4 pb-4">
+        <div className="space-y-3 px-5 pb-5">
           <p className="text-sm text-muted">
             Everything is stored in this browser only. It is not uploaded, and
             it will not follow you to another device.
@@ -356,6 +359,8 @@ export default function SettingsPage() {
           </Button>
         </div>
       </Card>
+      </div>
+
     </main>
   );
 }
@@ -376,13 +381,13 @@ function ManualGoals({ goals }: { goals: Goals }) {
       action={
         <button
           onClick={() => setOpen(!open)}
-          className="text-sm font-medium text-accent"
+          className="pressable rounded-lg px-2 py-1 text-sm font-semibold text-accent-text hover:bg-sunken"
         >
           {open ? "Close" : "Edit"}
         </button>
       }
     >
-      <div className="px-4 pb-4">
+      <div className="px-5 pb-5">
         <p className="text-sm text-muted">
           Currently {Math.round(split.protein * 100)}% protein ·{" "}
           {Math.round(split.carbs * 100)}% carbs · {Math.round(split.fat * 100)}%

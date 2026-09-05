@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RecipeEditor } from "@/components/RecipeEditor";
 import { Button, Card, EmptyState } from "@/components/ui";
+import { PageHeader } from "@/components/PageHeader";
 import { foodKey, removeRecipe, removeSavedMeal, toggleFavorite } from "@/lib/store";
 import {
   componentsNutrients,
@@ -22,8 +23,10 @@ export default function FoodsPage() {
   );
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 px-4 pb-28 pt-6 sm:px-6">
-      <h1 className="text-lg font-semibold tracking-tight">Foods</h1>
+    <main className="mx-auto w-full max-w-2xl px-4 pb-28 sm:px-6">
+      <PageHeader title="Foods" subtitle="Recipes, saved meals and starred foods" />
+
+      <div className="stagger space-y-3.5">
 
       {/* -------------------------------------------------------- recipes */}
       <Card
@@ -31,7 +34,7 @@ export default function FoodsPage() {
         action={
           <button
             onClick={() => setCreating(true)}
-            className="text-sm font-medium text-accent"
+            className="pressable rounded-lg px-2 py-1 text-sm font-semibold text-accent-text hover:bg-sunken"
           >
             + New recipe
           </button>
@@ -78,7 +81,7 @@ export default function FoodsPage() {
                       }
                     }}
                     aria-label={`Delete ${recipe.name}`}
-                    className="shrink-0 px-4 py-3 text-muted hover:text-danger"
+                    className="shrink-0 px-4 py-3 text-muted hover:text-danger-text"
                   >
                     ×
                   </button>
@@ -119,7 +122,7 @@ export default function FoodsPage() {
                       }
                     }}
                     aria-label={`Delete ${meal.name}`}
-                    className="shrink-0 px-4 py-3 text-muted hover:text-danger"
+                    className="shrink-0 px-4 py-3 text-muted hover:text-danger-text"
                   >
                     ×
                   </button>
@@ -160,6 +163,8 @@ export default function FoodsPage() {
           </ul>
         )}
       </Card>
+
+      </div>
 
       {(creating || editing) && (
         <RecipeEditor

@@ -131,12 +131,12 @@ export function AddFoodDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4"
+      className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="flex h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-border bg-surface shadow-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl"
+        className="animate-panel flex h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-border bg-elevated shadow-[var(--shadow-lg)] sm:h-auto sm:max-h-[85vh] sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -209,7 +209,7 @@ function FoodRow({
     <li className="flex items-center">
       <button
         onClick={onPick}
-        className="min-w-0 flex-1 px-4 py-3 text-left hover:bg-sunken"
+        className="min-w-0 flex-1 px-5 py-3 text-left transition-colors hover:bg-sunken"
       >
         <p className="truncate text-sm font-medium">{food.name}</p>
         <p className="tabular mt-0.5 text-xs text-muted">{subtitle ?? summary}</p>
@@ -275,11 +275,11 @@ function BrowseStep({
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
+      <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
         <h2 className="font-semibold">Add to {MEAL_LABELS[meal]}</h2>
         <button
           onClick={onClose}
-          className="rounded-lg px-2 py-1 text-sm text-muted hover:bg-sunken"
+          className="pressable rounded-xl px-2.5 py-1.5 text-sm text-muted hover:bg-sunken hover:text-fg"
         >
           Cancel
         </button>
@@ -302,7 +302,9 @@ function BrowseStep({
               onClick={() => setTab(t.value)}
               aria-pressed={tab === t.value}
               className={`flex-1 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors ${
-                tab === t.value ? "bg-sunken text-fg" : "text-muted hover:text-fg"
+                tab === t.value
+                  ? "bg-accent-soft text-accent-text"
+                  : "text-muted hover:bg-sunken hover:text-fg"
               }`}
             >
               {t.label}
@@ -314,7 +316,7 @@ function BrowseStep({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {active ? (
           <>
-            {error && <p className="px-4 py-3 text-sm text-danger">{error}</p>}
+            {error && <p className="px-4 py-3 text-sm text-danger-text">{error}</p>}
             {searching && (
               <p className="px-4 py-6 text-center text-sm text-muted">
                 Searching…
@@ -389,7 +391,7 @@ function BrowseStep({
                   <li key={savedMeal.id}>
                     <button
                       onClick={() => onLogComponents(savedMeal.components)}
-                      className="w-full px-4 py-3 text-left hover:bg-sunken"
+                      className="w-full px-5 py-3 text-left transition-colors hover:bg-sunken"
                     >
                       <p className="text-sm font-medium">{savedMeal.name}</p>
                       <p className="tabular mt-0.5 text-xs text-muted">
@@ -480,10 +482,10 @@ function PortionStep({
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
+      <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
         <button
           onClick={onBack}
-          className="rounded-lg px-2 py-1 text-sm text-muted hover:bg-sunken"
+          className="pressable rounded-xl px-2.5 py-1.5 text-sm text-muted hover:bg-sunken hover:text-fg"
         >
           Back
         </button>
@@ -529,7 +531,7 @@ function PortionStep({
             <button
               key={g}
               onClick={() => setGrams(String(g))}
-              className="tabular rounded-full border border-border px-3 py-1 text-sm hover:bg-sunken"
+              className="pressable tabular rounded-full border border-border px-3.5 py-1.5 text-sm font-medium hover:border-border-strong hover:bg-sunken"
             >
               {g} g{g === food.servingGrams ? " · serving" : ""}
             </button>
@@ -622,10 +624,10 @@ function ManualStep({
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
+      <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
         <button
           onClick={onBack}
-          className="rounded-lg px-2 py-1 text-sm text-muted hover:bg-sunken"
+          className="pressable rounded-xl px-2.5 py-1.5 text-sm text-muted hover:bg-sunken hover:text-fg"
         >
           Back
         </button>
@@ -653,7 +655,7 @@ function ManualStep({
 
         <button
           onClick={() => setShowMore(!showMore)}
-          className="mt-4 text-sm font-medium text-accent"
+          className="pressable mt-4 rounded-lg text-sm font-semibold text-accent-text hover:underline"
         >
           {showMore ? "Hide" : "Add"} fibre, sugar, sodium…
         </button>

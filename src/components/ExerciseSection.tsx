@@ -36,7 +36,7 @@ export function ExerciseSection({
       <Card
         title="Exercise"
         action={
-          <span className="tabular text-sm text-muted">
+          <span className="tabular text-sm font-medium text-muted">
             {total > 0 ? `${total.toLocaleString()} kcal` : ""}
           </span>
         }
@@ -46,7 +46,7 @@ export function ExerciseSection({
             {exercises.map((exercise) => (
               <li
                 key={exercise.id}
-                className="group flex items-center gap-3 px-4 py-2.5"
+                className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-sunken"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{exercise.name}</p>
@@ -62,7 +62,7 @@ export function ExerciseSection({
                 <button
                   onClick={() => removeExercise(exercise.id)}
                   aria-label={`Remove ${exercise.name}`}
-                  className="shrink-0 rounded-lg px-1.5 py-1 text-muted opacity-0 transition-opacity hover:bg-sunken hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+                  className="pressable shrink-0 rounded-lg px-2 py-1 text-faint opacity-0 hover:bg-danger-soft hover:text-danger-text focus-visible:opacity-100 group-hover:opacity-100"
                 >
                   ×
                 </button>
@@ -74,14 +74,14 @@ export function ExerciseSection({
         <div className="border-t border-border p-2">
           <button
             onClick={() => setAdding(true)}
-            className="w-full rounded-xl py-2 text-sm font-medium text-accent hover:bg-sunken"
+            className="pressable w-full rounded-2xl py-2.5 text-sm font-semibold text-accent-text hover:bg-sunken"
           >
             + Add exercise
           </button>
         </div>
 
         {!addsCalories && total > 0 && (
-          <p className="border-t border-border px-4 py-2.5 text-xs text-muted">
+          <p className="border-t border-border px-5 py-3 text-xs text-muted">
             Recorded, but not added to today&apos;s calories — you turned that
             off in settings.
           </p>
@@ -137,7 +137,7 @@ function AddExercise({ date, onClose }: { date: string; onClose: () => void }) {
             <button
               key={preset.name}
               onClick={() => applyPreset(preset)}
-              className="rounded-full border border-border px-3 py-1 text-sm hover:bg-sunken"
+              className="pressable rounded-full border border-border px-3.5 py-1.5 text-sm font-medium hover:border-border-strong hover:bg-sunken"
             >
               {preset.name}
             </button>

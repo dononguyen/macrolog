@@ -97,7 +97,7 @@ export function RecipeEditor({
               <h3 className="text-sm font-medium">Ingredients</h3>
               <button
                 onClick={() => setAdding(true)}
-                className="text-sm font-medium text-accent"
+                className="pressable rounded-lg px-2 py-1 text-sm font-semibold text-accent-text hover:bg-sunken"
               >
                 + Add ingredient
               </button>
@@ -146,7 +146,7 @@ export function RecipeEditor({
                         setComponents(components.filter((_, i) => i !== index))
                       }
                       aria-label={`Remove ${component.food.name}`}
-                      className="shrink-0 rounded-lg px-1.5 py-1 text-muted hover:bg-sunken hover:text-danger"
+                      className="shrink-0 rounded-lg px-1.5 py-1 text-muted hover:bg-sunken hover:text-danger-text"
                     >
                       ×
                     </button>

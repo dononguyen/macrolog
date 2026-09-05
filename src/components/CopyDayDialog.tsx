@@ -125,7 +125,7 @@ export function CopyDayDialog({
 
           <button
             onClick={() => setSource(null)}
-            className="mt-4 text-sm font-medium text-accent"
+            className="pressable mt-4 rounded-lg text-sm font-semibold text-accent-text hover:underline"
           >
             Pick a different day
           </button>
