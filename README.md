@@ -29,11 +29,15 @@ The key is only ever read on the server, so it never reaches the browser.
 
 ## What it does
 
-**Diary** — Four meals a day, searched from USDA or entered by hand. Tracks
-calories, protein, carbs, fat, fibre, sugar, saturated fat, sodium and
-cholesterol. Logs exercise and water. The calorie budget is spelled out as
-`Goal − Food + Exercise = Left` so the number in the ring is never something
-you have to take on trust.
+**Diary** — A scrolling week strip picks the day, with a dot on days that have
+entries so gaps in a run are visible. The day leads with calories left and three
+macro cards, then everything eaten in the order you logged it. One button adds
+food, quick-adds calories, or copies a previous day; the meal is something you
+choose while adding rather than a section you file food under first.
+
+Tracks calories, protein, carbs, fat, fibre, sugar, saturated fat, sodium and
+cholesterol, plus exercise and water. Foods come from USDA search or by hand.
+Light by default, with a theme setting for dark or system.
 
 **Fast logging** — Recipes (built from weighed ingredients, logged by the
 serving), saved meals, starred foods, copy any previous day or one meal from
@@ -55,6 +59,7 @@ src/
     progress/                   weight, intake history, streak
     foods/                      recipes, saved meals, starred foods
     settings/                   profile, calculated targets, preferences
+    layout.tsx                  shell, tab bar, pre-paint theme stamp
     api/foods/search/route.ts   proxies USDA search, keeps the key server-side
   components/                   charts, dialogs, and shared UI primitives
   lib/
@@ -64,6 +69,10 @@ src/
     stats.ts                    streaks, averages, weight smoothing
     usda.ts                     mapping USDA's payload onto our model
     date.ts                     local calendar days as YYYY-MM-DD keys
+    rate-limit.ts               throttles the search route per client
+    theme-script.ts             the inlined theme stamp, hashed by the CSP
+    useStore.ts                 React binding for the store
+    useCountUp.ts               animates a figure to its new value
 ```
 
 Four ideas hold the rest together:
@@ -100,6 +109,43 @@ never sent anywhere.
 
 Because there is no encryption at rest, anyone with access to your browser
 profile can read your log. That is the trade for having no accounts.
+
+## Security
+
+Most of the safety here is structural rather than enforced. There are no
+accounts and no server-side database, so there is no shared store for one
+person's data to leak out of — everyone's log lives in their own browser. The
+server exposes exactly one route, `GET /api/foods/search`, which reads and
+proxies; nothing a visitor sends is ever written anywhere.
+
+On top of that:
+
+- **A Content-Security-Policy that forbids inline script.** The single inline
+  script (the pre-paint theme stamp) is allowed by SHA-256 hash instead,
+  computed from the same constant the layout renders, so the two cannot drift.
+  `style-src` still needs `'unsafe-inline'`, since React writes component styles
+  as attributes and `next/font` injects its own tag; neither can be hashed.
+- **`frame-ancestors 'none'` and `X-Frame-Options`**, because the settings
+  screen has a delete-everything button behind a `confirm()`.
+- **`nosniff`, `Referrer-Policy: no-referrer`** (search terms sit in the query
+  string), a **`Permissions-Policy`** denying camera, microphone and location,
+  **HSTS** in production, and `X-Powered-By` switched off.
+- **Rate limiting and input caps** on the search route: 20 requests a minute per
+  client, a 100-character query cap, an 8s upstream timeout, and a ceiling on
+  the upstream response size. Production error text says nothing about how the
+  key is configured.
+
+Known limits, so nobody has to rediscover them:
+
+- The rate limiter is **in-process memory**. On serverless a cold start begins
+  with an empty counter, so it is a throttle on casual abuse, not a hard global
+  cap. It sits behind a small interface in `src/lib/rate-limit.ts` so it can be
+  moved to a shared store without touching the route.
+- It keys on `X-Forwarded-For`, which is only trustworthy when the platform in
+  front overwrites it (Vercel does). Never use it to authorise anything.
+- **There is no authentication.** Anyone with the URL can use a deployed copy.
+- Data is **not encrypted at rest**: anyone with access to a browser profile can
+  read that person's log.
 
 ## Deploying
 
@@ -140,12 +186,16 @@ behind a small interface in `src/lib/rate-limit.ts` for exactly that reason.
 
 Tests cover the parts that fail quietly rather than loudly — the BMR equation
 and its intake floor, macro splits, recipe scaling, streak and average windows,
-and the corrections applied to USDA payloads. They run on Node's built-in test
-runner against the real source, with no extra dependencies.
+the corrections applied to USDA payloads, and the rate limiter's window and
+memory bounds. They run on Node's built-in test runner against the real source,
+with no extra dependencies.
 
 ## Not built yet
 
 - Barcode scanning
 - Editing a logged entry's weight in place (delete and re-add for now)
-- Syncing between devices
+- Syncing between devices, and any way to export or back up a log
+- Installing to a home screen — there is no web manifest, so no offline use
+- Any access control on a deployed copy: the URL is the only thing limiting who
+  can open it
 - Micronutrients beyond the nine tracked
