@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import { TabBar } from "@/components/TabBar";
 import { ThemeSync } from "@/components/ThemeSync";
 import { THEME_SCRIPT } from "@/lib/theme-script";
@@ -30,7 +31,18 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/**
+ * Rendered per request rather than prerendered at build time. The CSP nonce
+ * only exists once a request does, and a statically generated page would ship
+ * script tags carrying a nonce from whenever it was built — which the browser
+ * would refuse. Every page here is a client component reading localStorage, so
+ * there was no meaningful server work to cache anyway.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html
       lang="en"
@@ -38,9 +50,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        {/* Inlined deliberately: it must run before the first paint. The CSP
-            allows it by hash, not by opening the policy to inline script. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Inlined deliberately: it must run before the first paint, or the
+            page flashes the wrong theme. Next nonces its own scripts; this one
+            is ours, so it carries the nonce by hand. */}
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
+        />
       </head>
       <body className="flex min-h-full flex-col">
         <ThemeSync />

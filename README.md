@@ -120,11 +120,14 @@ proxies; nothing a visitor sends is ever written anywhere.
 
 On top of that:
 
-- **A Content-Security-Policy that forbids inline script.** The single inline
-  script (the pre-paint theme stamp) is allowed by SHA-256 hash instead,
-  computed from the same constant the layout renders, so the two cannot drift.
-  `style-src` still needs `'unsafe-inline'`, since React writes component styles
-  as attributes and `next/font` injects its own tag; neither can be hashed.
+- **A Content-Security-Policy that forbids inline script.** Inline scripts are
+  allowed only by a per-request nonce, issued in `src/proxy.ts`. A hash cannot
+  work here: the App Router streams the React payload as inline scripts whose
+  contents change every render, so a hash-only policy blocks them and the page
+  renders but never becomes interactive. Using a nonce is why every page is
+  rendered per request rather than prerendered. `style-src` still needs
+  `'unsafe-inline'`, since React writes component styles as attributes and a
+  nonce cannot apply to an attribute.
 - **`frame-ancestors 'none'` and `X-Frame-Options`**, because the settings
   screen has a delete-everything button behind a `confirm()`.
 - **`nosniff`, `Referrer-Policy: no-referrer`** (search terms sit in the query
