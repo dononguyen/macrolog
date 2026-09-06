@@ -1,10 +1,16 @@
 # macrolog
 
+**[Try it → macrolog-pi.vercel.app](https://macrolog-pi.vercel.app/)**
+
 A calorie and macro tracker. Log what you eat against targets worked out from
 your own body stats, then see whether it is actually going anywhere.
 
 Built with Next.js (App Router), TypeScript and Tailwind. Food data comes from
 the USDA FoodData Central database. Everything is stored in your browser.
+
+No account, no install — open the link and start logging. Your data stays in
+your own browser, which also means it does not sync between devices, and
+clearing site data clears it.
 
 ## Getting started
 
