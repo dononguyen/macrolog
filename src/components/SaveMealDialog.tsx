@@ -2,25 +2,19 @@
 
 import { useState } from "react";
 import { saveMeal } from "@/lib/store";
-import {
-  MEAL_LABELS,
-  totalNutrients,
-  type Entry,
-  type MealSlot,
-} from "@/lib/types";
+import { totalNutrients, type Entry } from "@/lib/types";
 import { Button, Field, Modal, TextInput } from "./ui";
 
 /**
  * Turns what is already on the plate into a reusable meal, so a regular
- * breakfast is logged once and then recalled in a tap.
+ * breakfast is logged once and then recalled in a tap. It takes whatever is
+ * passed to it — the whole day, or one meal's worth of it.
  */
 export function SaveMealDialog({
   entries,
-  meal,
   onClose,
 }: {
   entries: Entry[];
-  meal: MealSlot;
   onClose: () => void;
 }) {
   const [name, setName] = useState("");
@@ -28,7 +22,7 @@ export function SaveMealDialog({
 
   return (
     <Modal
-      title={`Save ${MEAL_LABELS[meal].toLowerCase()} as a meal`}
+      title="Save as a meal"
       onClose={onClose}
       footer={
         <Button

@@ -10,6 +10,7 @@ import {
   isRateClamped,
   kgToLb,
   lbToKg,
+  nearestSplit,
   splitOfGoals,
   tdee,
 } from "./nutrition";
@@ -103,4 +104,33 @@ test("exercise raises the budget only when the setting is on", () => {
 test("unit conversions round-trip", () => {
   assert.ok(Math.abs(lbToKg(kgToLb(72.5)) - 72.5) < 1e-9);
   assert.equal(Math.round(feetInchesToCm(5, 11)), 180);
+});
+
+// Settings re-opens on the split your goals represent. Resetting the picker
+// to "balanced" made the screen misreport saved targets, and the next save
+// silently rewrote them to a split that was never chosen.
+test("goals built from a split are recognised as that split", () => {
+  const profile: Profile = {
+    sex: "male",
+    age: 34,
+    heightCm: 180,
+    weightKg: 80,
+    activity: "moderate",
+    rateKgPerWeek: -0.5,
+  };
+
+  for (const key of ["balanced", "highProtein", "lowCarb"]) {
+    assert.equal(nearestSplit(goalsFromProfile(profile, key)), key);
+  }
+});
+
+test("hand-edited goals report the closest named split", () => {
+  // 40% protein / 30% carbs / 30% fat is nearest high protein, not balanced.
+  const goals = { ...DEFAULT_GOALS, kcal: 2000, protein: 200, carbs: 150, fat: 67 };
+  assert.equal(nearestSplit(goals), "highProtein");
+});
+
+test("empty goals fall back to balanced rather than throwing", () => {
+  const goals = { ...DEFAULT_GOALS, protein: 0, carbs: 0, fat: 0 };
+  assert.equal(nearestSplit(goals), "balanced");
 });

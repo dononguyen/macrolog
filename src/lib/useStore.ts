@@ -5,6 +5,7 @@ import {
   getServerSnapshot,
   getSnapshot,
   hydrate,
+  isHydrated,
   subscribe,
   type AppState,
 } from "./store";
@@ -19,4 +20,13 @@ export function useStore(): AppState {
     hydrate();
   }, []);
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+/**
+ * False until the stored data has been read. Screens that seed an editable
+ * draft from the store must hold that draft back until this is true, or the
+ * draft captures the empty state and saving overwrites what was stored.
+ */
+export function useHydrated(): boolean {
+  return useSyncExternalStore(subscribe, isHydrated, () => false);
 }

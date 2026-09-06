@@ -100,6 +100,20 @@ function servingGrams(food: UsdaFood): number | undefined {
   return undefined;
 }
 
+/**
+ * USDA descriptions carry catalogue debris: a trailing barcode, doubled
+ * separators, stray whitespace. None of it helps anyone pick a food, and all
+ * of it costs room on a line that is already long.
+ */
+function cleanDescription(s: string): string {
+  return s
+    .replace(/,?\s*(?:UPC|GTIN)\s*:?\s*\d+\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/(?:,\s*)+$/, "")
+    .trim();
+}
+
 function titleCase(s: string): string {
   // USDA descriptions are frequently SHOUTED, especially branded items.
   if (s !== s.toUpperCase()) return s;
@@ -112,7 +126,7 @@ export function toFood(food: UsdaFood): Food {
   return {
     id: `usda-${food.fdcId}`,
     fdcId: food.fdcId,
-    name: titleCase(food.description?.trim() || "Unnamed food"),
+    name: titleCase(cleanDescription(food.description ?? "")) || "Unnamed food",
     brand: (food.brandName || food.brandOwner)?.trim()
       ? titleCase((food.brandName || food.brandOwner)!.trim())
       : undefined,
@@ -139,7 +153,18 @@ function dataTypeRank(food: UsdaFood): number {
   return DATA_TYPE_RANK[food.dataType ?? ""] ?? 4;
 }
 
+/**
+ * The same product is registered many times over — different packet sizes, a
+ * distributor re-listing a brand, the same description under several ids. They
+ * are indistinguishable in a list, so only the best-ranked one is kept.
+ */
+function sameFoodKey(food: Food): string {
+  return `${food.name.toLowerCase()}|${food.brand?.toLowerCase() ?? ""}`;
+}
+
 export function toFoods(response: UsdaSearchResponse): Food[] {
+  const seen = new Set<string>();
+
   return (response.foods ?? [])
     .map((food, index) => ({ food, index }))
     .sort(
@@ -154,5 +179,11 @@ export function toFoods(response: UsdaSearchResponse): Food[] {
         f.per100g.protein > 0 ||
         f.per100g.carbs > 0 ||
         f.per100g.fat > 0,
-    );
+    )
+    .filter((f) => {
+      const key = sameFoodKey(f);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }

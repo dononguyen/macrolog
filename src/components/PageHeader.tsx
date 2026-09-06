@@ -4,16 +4,19 @@ import type { ReactNode } from "react";
 
 /**
  * Sticks to the top so the screen you are on stays named while you scroll,
- * with the page showing through blurred behind it.
+ * with the page showing through blurred behind it. Anything passed as children
+ * is pinned along with it — the diary hangs its day strip there.
  */
 export function PageHeader({
   title,
   subtitle,
   action,
+  children,
 }: {
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-border/60 bg-bg/80 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
@@ -26,6 +29,7 @@ export function PageHeader({
         </div>
         {action}
       </div>
+      {children}
     </header>
   );
 }

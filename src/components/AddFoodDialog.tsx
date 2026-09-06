@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { addEntries, addEntry, foodKey, toggleFavorite } from "@/lib/store";
 import type { AppState } from "@/lib/store";
 import {
   MACRO_KEYS,
   MEAL_LABELS,
+  MEAL_SLOTS,
   MICRO_KEYS,
   NUTRIENT_KEYS,
   NUTRIENT_META,
@@ -19,7 +26,15 @@ import {
   type MealSlot,
   type NutrientKey,
 } from "@/lib/types";
-import { Button, EmptyState, Field, NumberInput, TextInput } from "./ui";
+import {
+  Button,
+  EmptyState,
+  Field,
+  MacroChips,
+  NumberInput,
+  SegmentedControl,
+  TextInput,
+} from "./ui";
 
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 350;
@@ -44,15 +59,17 @@ type SearchState = {
 
 export function AddFoodDialog({
   date,
-  meal,
+  initialMeal,
   state,
   onClose,
 }: {
   date: string;
-  meal: MealSlot;
+  /** Pre-selected from the clock; the picker below is the real choice. */
+  initialMeal: MealSlot;
   state: AppState;
   onClose: () => void;
 }) {
+  const [meal, setMeal] = useState<MealSlot>(initialMeal);
   const [step, setStep] = useState<Step>("browse");
   const [tab, setTab] = useState<Tab>("recents");
   const [query, setQuery] = useState("");
@@ -129,6 +146,24 @@ export function AddFoodDialog({
     onClose();
   };
 
+  /**
+   * One selection, shown in every step, so the meal is settled before you
+   * commit whichever way you are logging — search, manual or a saved meal.
+   */
+  const mealPicker = (
+    <div className="shrink-0 border-b border-border px-4 py-3">
+      <SegmentedControl<MealSlot>
+        label="Meal"
+        value={meal}
+        onChange={setMeal}
+        options={MEAL_SLOTS.map((slot) => ({
+          value: slot,
+          label: MEAL_LABELS[slot],
+        }))}
+      />
+    </div>
+  );
+
   return (
     <div
       className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4"
@@ -140,13 +175,14 @@ export function AddFoodDialog({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={`Add food to ${MEAL_LABELS[meal]}`}
+        aria-label="Add food"
       >
         {step === "portion" && selected ? (
           <PortionStep
             food={selected}
             date={date}
             meal={meal}
+            mealPicker={mealPicker}
             favourite={state.favorites.includes(foodKey(selected))}
             onBack={() => setStep("browse")}
             onDone={onClose}
@@ -155,12 +191,13 @@ export function AddFoodDialog({
           <ManualStep
             date={date}
             meal={meal}
+            mealPicker={mealPicker}
             onBack={() => setStep("browse")}
             onDone={onClose}
           />
         ) : (
           <BrowseStep
-            meal={meal}
+            mealPicker={mealPicker}
             state={state}
             query={query}
             setQuery={setQuery}
@@ -186,6 +223,12 @@ export function AddFoodDialog({
 
 // ------------------------------------------------------------------ browse
 
+/**
+ * One result. USDA names run long and the old single-line summary crushed the
+ * brand, the calories and three macros into one unreadable sentence, then
+ * truncated it. Each of those is its own thing to look at here, laid out like
+ * the diary rows so a food looks the same before and after you log it.
+ */
 function FoodRow({
   food,
   subtitle,
@@ -199,20 +242,49 @@ function FoodRow({
   onPick: () => void;
   onToggleFavourite?: () => void;
 }) {
-  const summary = `${food.brand ? `${food.brand} · ` : ""}${Math.round(
-    food.per100g.kcal,
-  )} kcal · ${Math.round(food.per100g.protein)}p ${Math.round(
-    food.per100g.carbs,
-  )}c ${Math.round(food.per100g.fat)}f per 100 g`;
+  const serving = food.servingLabel
+    ? food.servingGrams
+      ? `${food.servingLabel} · ${food.servingGrams} g`
+      : food.servingLabel
+    : food.servingGrams
+      ? `Serving ${food.servingGrams} g`
+      : null;
+
+  const detail = subtitle ?? [food.brand, serving].filter(Boolean).join(" · ");
 
   return (
     <li className="flex items-center">
       <button
         onClick={onPick}
-        className="min-w-0 flex-1 px-5 py-3 text-left transition-colors hover:bg-sunken"
+        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-sunken"
       >
-        <p className="truncate text-sm font-medium">{food.name}</p>
-        <p className="tabular mt-0.5 text-xs text-muted">{subtitle ?? summary}</p>
+        {/* No photos in this app, so the tile carries the food's initial
+            rather than leaving an empty grey square. */}
+        <span
+          aria-hidden="true"
+          className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-sunken text-base font-bold text-muted"
+        >
+          {food.name.trim().charAt(0).toUpperCase()}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 text-sm font-semibold">{food.name}</span>
+          {detail && (
+            <span className="mt-0.5 block truncate text-xs text-muted">
+              {detail}
+            </span>
+          )}
+          <MacroChips nutrients={food.per100g} className="mt-1.5" />
+        </span>
+
+        <span className="shrink-0 text-right">
+          <span className="tabular block text-sm font-bold">
+            {Math.round(food.per100g.kcal).toLocaleString()}
+          </span>
+          <span className="block text-[10px] font-medium uppercase tracking-wide text-faint">
+            per 100 g
+          </span>
+        </span>
       </button>
       {onToggleFavourite && (
         <button
@@ -231,7 +303,7 @@ function FoodRow({
 }
 
 function BrowseStep({
-  meal,
+  mealPicker,
   state,
   query,
   setQuery,
@@ -246,7 +318,7 @@ function BrowseStep({
   onManual,
   onClose,
 }: {
-  meal: MealSlot;
+  mealPicker: ReactNode;
   state: AppState;
   query: string;
   setQuery: (v: string) => void;
@@ -275,8 +347,8 @@ function BrowseStep({
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
-        <h2 className="font-semibold">Add to {MEAL_LABELS[meal]}</h2>
+      <header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5">
+        <h2 className="font-semibold">Add food</h2>
         <button
           onClick={onClose}
           className="pressable rounded-xl px-2.5 py-1.5 text-sm text-muted hover:bg-sunken hover:text-fg"
@@ -285,7 +357,9 @@ function BrowseStep({
         </button>
       </header>
 
-      <div className="border-b border-border p-4">
+      {mealPicker}
+
+      <div className="shrink-0 border-b border-border p-4">
         <TextInput
           ref={inputRef}
           value={query}
@@ -448,6 +522,7 @@ function PortionStep({
   food,
   date,
   meal,
+  mealPicker,
   favourite,
   onBack,
   onDone,
@@ -455,6 +530,7 @@ function PortionStep({
   food: Food;
   date: string;
   meal: MealSlot;
+  mealPicker: ReactNode;
   favourite: boolean;
   onBack: () => void;
   onDone: () => void;
@@ -482,7 +558,7 @@ function PortionStep({
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
+      <header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5">
         <button
           onClick={onBack}
           className="pressable rounded-xl px-2.5 py-1.5 text-sm text-muted hover:bg-sunken hover:text-fg"
@@ -501,6 +577,8 @@ function PortionStep({
           {favourite ? "★" : "☆"}
         </button>
       </header>
+
+      {mealPicker}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <p className="font-medium">{food.name}</p>
@@ -585,11 +663,13 @@ function PortionStep({
 function ManualStep({
   date,
   meal,
+  mealPicker,
   onBack,
   onDone,
 }: {
   date: string;
   meal: MealSlot;
+  mealPicker: ReactNode;
   onBack: () => void;
   onDone: () => void;
 }) {
@@ -624,7 +704,7 @@ function ManualStep({
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
+      <header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5">
         <button
           onClick={onBack}
           className="pressable rounded-xl px-2.5 py-1.5 text-sm text-muted hover:bg-sunken hover:text-fg"
@@ -634,6 +714,8 @@ function ManualStep({
         <h2 className="font-semibold">Manual entry</h2>
         <span className="w-12" />
       </header>
+
+      {mealPicker}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <Field label="Food name" htmlFor="manual-name">

@@ -22,6 +22,7 @@ import {
   isRateClamped,
   kgToLb,
   lbToKg,
+  nearestSplit,
   splitOfGoals,
   tdee,
   type MacroSplitKey,
@@ -36,7 +37,7 @@ import {
   type Profile,
   type Sex,
 } from "@/lib/types";
-import { useStore } from "@/lib/useStore";
+import { useHydrated, useStore } from "@/lib/useStore";
 
 const BLANK_PROFILE: Profile = {
   sex: "female",
@@ -52,18 +53,9 @@ const RATES = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5] as const;
 
 export default function SettingsPage() {
   const { profile, goals, settings } = useStore();
-  const [draft, setDraft] = useState<Profile>(profile ?? BLANK_PROFILE);
-  const [split, setSplit] = useState<MacroSplitKey>("balanced");
-  const [saved, setSaved] = useState(false);
+  const hydrated = useHydrated();
 
   const imperial = settings.units === "imperial";
-  const projected = useMemo(() => goalsFromProfile(draft, split), [draft, split]);
-  const clamped = isRateClamped(draft);
-
-  const set = <K extends keyof Profile>(key: K, value: Profile[K]) => {
-    setDraft({ ...draft, [key]: value });
-    setSaved(false);
-  };
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 pb-28 sm:px-6">
@@ -71,8 +63,139 @@ export default function SettingsPage() {
 
       <div className="stagger space-y-3.5">
 
+      {/*
+        * The only part of this screen that copies stored data into an editable
+        * draft, so the only part that must wait for the store to be read.
+        * Mounting it sooner seeds the form from the empty state, and saving
+        * then writes that over the real profile.
+        */}
+      {hydrated ? (
+        <ProfilePlan profile={profile} goals={goals} imperial={imperial} />
+      ) : (
+        <PlanPlaceholder />
+      )}
+
+      <ManualGoals goals={goals} />
+
+      {/* --------------------------------------------------- preferences */}
+      <Card title="Preferences">
+        <div className="space-y-4 px-5 pb-5">
+          <Field label="Units">
+            <SegmentedControl
+              label="Units"
+              value={settings.units}
+              onChange={(units) => setSettings({ ...settings, units })}
+              options={[
+                { value: "metric", label: "Metric (kg, cm)" },
+                { value: "imperial", label: "Imperial (lb, ft)" },
+              ]}
+            />
+          </Field>
+
+          <Toggle
+            label="Exercise adds to your calories"
+            hint="On: a logged workout raises the day's budget, as MyFitnessPal does. Off: workouts are recorded but your target holds."
+            checked={settings.exerciseAddsCalories}
+            onChange={(exerciseAddsCalories) =>
+              setSettings({ ...settings, exerciseAddsCalories })
+            }
+          />
+        </div>
+      </Card>
+
+      {/* ---------------------------------------------------------- data */}
+      <Card title="Your data">
+        <div className="space-y-3 px-5 pb-5">
+          <p className="text-sm text-muted">
+            Your log, goals, weight and profile are stored in this browser only.
+            They are not uploaded, and will not follow you to another device.
+          </p>
+          <p className="text-sm text-muted">
+            The one exception: when you search for a food, the words you type
+            are sent to the USDA food database to look up. What you actually log
+            is never sent anywhere.
+          </p>
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (
+                confirm(
+                  "Delete every log, recipe, weight and goal? This cannot be undone.",
+                )
+              ) {
+                clearAll();
+              }
+            }}
+          >
+            Delete all data
+          </Button>
+        </div>
+      </Card>
+      </div>
+
+    </main>
+  );
+}
+
+/** Holds the shape of the card while the store is read, so nothing jumps. */
+function PlanPlaceholder() {
+  return (
+    <Card title="About you">
+      <div className="space-y-3 px-5 pb-5">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-11 animate-pulse rounded-2xl bg-sunken" />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Your body stats and the targets they produce. The draft is deliberately
+ * local, so a half-typed weight does not move your goals mid-keystroke — but
+ * that means nothing here is kept until the button is pressed, which is what
+ * the "Unsaved" marker and the note under the button are for.
+ */
+function ProfilePlan({
+  profile,
+  goals,
+  imperial,
+}: {
+  profile: Profile | null;
+  goals: Goals;
+  imperial: boolean;
+}) {
+  const [draft, setDraft] = useState<Profile>(profile ?? BLANK_PROFILE);
+  // Re-open on the split the stored goals represent, not on the default:
+  // resetting the picker here would misreport the targets you are running,
+  // and the next save would rewrite them to a split you never chose.
+  const [split, setSplit] = useState<MacroSplitKey>(() => nearestSplit(goals));
+
+  const projected = useMemo(() => goalsFromProfile(draft, split), [draft, split]);
+  const clamped = isRateClamped(draft);
+  // Kept apart on purpose. The badge is about the profile card it sits on;
+  // the button is about everything a save would write, so hand-edited targets
+  // in "Fine-tune" leave the button live without branding the profile unsaved.
+  const profileSaved = sameProfile(draft, profile);
+  const stored = profileSaved && sameGoals(projected, goals);
+
+  const set = <K extends keyof Profile>(key: K, value: Profile[K]) => {
+    setDraft({ ...draft, [key]: value });
+  };
+
+  return (
+    <>
       {/* ------------------------------------------------------- profile */}
-      <Card title="About you">
+      <Card
+        title="About you"
+        action={
+          !profileSaved && (
+            <span className="rounded-full bg-sunken px-2.5 py-1 text-xs font-semibold text-muted">
+              Unsaved
+            </span>
+          )
+        }
+      >
         <div className="space-y-4 px-5 pb-5">
           <p className="text-sm text-muted">
             Used to estimate how much you burn. Nothing leaves your browser.
@@ -297,71 +420,43 @@ export default function SettingsPage() {
 
           <Button
             className="w-full"
+            disabled={stored}
             onClick={() => {
               setProfile(draft);
               setGoals(projected);
-              setSaved(true);
             }}
           >
-            {saved ? "Targets applied" : "Save and apply these targets"}
+            {stored ? "These targets are saved" : "Save and apply these targets"}
           </Button>
+
+          {!stored && (
+            <p className="text-center text-xs text-muted">
+              Your details and targets are not kept until you save.
+            </p>
+          )}
         </div>
       </Card>
+    </>
+  );
+}
 
-      <ManualGoals goals={goals} />
+/**
+ * Both derived rather than remembered, so they become true the moment a save
+ * lands and false again as soon as anything moves — including the macro split,
+ * which changes the targets without touching a single profile field.
+ */
+function sameProfile(draft: Profile, profile: Profile | null): boolean {
+  if (!profile) return false;
+  return (
+    (Object.keys(BLANK_PROFILE) as (keyof Profile)[]).every(
+      (key) => draft[key] === profile[key],
+    ) && draft.goalWeightKg === profile.goalWeightKg
+  );
+}
 
-      {/* --------------------------------------------------- preferences */}
-      <Card title="Preferences">
-        <div className="space-y-4 px-5 pb-5">
-          <Field label="Units">
-            <SegmentedControl
-              label="Units"
-              value={settings.units}
-              onChange={(units) => setSettings({ ...settings, units })}
-              options={[
-                { value: "metric", label: "Metric (kg, cm)" },
-                { value: "imperial", label: "Imperial (lb, ft)" },
-              ]}
-            />
-          </Field>
-
-          <Toggle
-            label="Exercise adds to your calories"
-            hint="On: a logged workout raises the day's budget, as MyFitnessPal does. Off: workouts are recorded but your target holds."
-            checked={settings.exerciseAddsCalories}
-            onChange={(exerciseAddsCalories) =>
-              setSettings({ ...settings, exerciseAddsCalories })
-            }
-          />
-        </div>
-      </Card>
-
-      {/* ---------------------------------------------------------- data */}
-      <Card title="Your data">
-        <div className="space-y-3 px-5 pb-5">
-          <p className="text-sm text-muted">
-            Everything is stored in this browser only. It is not uploaded, and
-            it will not follow you to another device.
-          </p>
-          <Button
-            variant="danger"
-            onClick={() => {
-              if (
-                confirm(
-                  "Delete every log, recipe, weight and goal? This cannot be undone.",
-                )
-              ) {
-                clearAll();
-              }
-            }}
-          >
-            Delete all data
-          </Button>
-        </div>
-      </Card>
-      </div>
-
-    </main>
+function sameGoals(projected: Goals, goals: Goals): boolean {
+  return (Object.keys(goals) as (keyof Goals)[]).every(
+    (key) => projected[key] === goals[key],
   );
 }
 

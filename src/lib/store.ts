@@ -87,21 +87,69 @@ function setState(next: AppState) {
   emit();
 }
 
-/** Merge stored JSON over the defaults, tolerating anything missing. */
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+/**
+ * Date-keyed numbers (weights, water). Anything that is not a finite number is
+ * dropped rather than carried into the app, where it would surface later as a
+ * NaN in a chart or a total.
+ */
+function asNumberRecord(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, number> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    // Skip inherited-looking keys so a crafted payload cannot smuggle one
+    // through into an object the app later spreads.
+    if (key === "__proto__" || key === "constructor") continue;
+    if (typeof entry === "number" && Number.isFinite(entry)) out[key] = entry;
+  }
+  return out;
+}
+
+/**
+ * Rebuild state from stored JSON by naming every field, rather than spreading
+ * whatever the payload happens to contain.
+ *
+ * localStorage is not a trust boundary in the usual sense — anything able to
+ * write it already runs script on this origin. The reason to validate is that
+ * a truncated or half-written payload is genuinely common, and the failure it
+ * causes should be a missing entry rather than a screen of NaN or a crash on
+ * load that locks the user out of their own log.
+ */
 function reviveState(raw: string): AppState {
-  const parsed = JSON.parse(raw) as Partial<AppState>;
+  const parsed = JSON.parse(raw) as Partial<AppState> | null;
+  if (!parsed || typeof parsed !== "object") return EMPTY_STATE;
+
   return {
-    ...EMPTY_STATE,
-    ...parsed,
-    entries: (parsed.entries ?? []).map((entry) => ({
-      ...entry,
-      food: { ...entry.food, per100g: normaliseNutrients(entry.food?.per100g) },
-    })),
-    library: (parsed.library ?? []).map((food) => ({
-      ...food,
-      per100g: normaliseNutrients(food.per100g),
-    })),
+    entries: asArray<Entry>(parsed.entries)
+      .filter((entry) => entry && typeof entry === "object" && entry.food)
+      .map((entry) => ({
+        ...entry,
+        food: { ...entry.food, per100g: normaliseNutrients(entry.food?.per100g) },
+      })),
+    library: asArray<Food>(parsed.library)
+      .filter((food) => food && typeof food === "object")
+      .map((food) => ({ ...food, per100g: normaliseNutrients(food.per100g) })),
+    favorites: asArray<unknown>(parsed.favorites).filter(
+      (key): key is string => typeof key === "string",
+    ),
+    recipes: asArray<Recipe>(parsed.recipes).filter(
+      (recipe) => recipe && typeof recipe === "object",
+    ),
+    savedMeals: asArray<SavedMeal>(parsed.savedMeals).filter(
+      (meal) => meal && typeof meal === "object",
+    ),
+    exercises: asArray<Exercise>(parsed.exercises).filter(
+      (exercise) => exercise && typeof exercise === "object",
+    ),
+    weights: asNumberRecord(parsed.weights),
+    water: asNumberRecord(parsed.water),
     goals: { ...DEFAULT_GOALS, ...(parsed.goals ?? {}) },
+    profile: parsed.profile && typeof parsed.profile === "object"
+      ? parsed.profile
+      : null,
     settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
   };
 }
@@ -155,6 +203,15 @@ export function subscribe(listener: () => void) {
 
 export function getSnapshot() {
   return state;
+}
+
+/**
+ * Whether the stored data has been read yet. Anything that copies state into
+ * a local draft must wait for this: before it, every field reads as empty, and
+ * a draft seeded from that would quietly replace real data when saved.
+ */
+export function isHydrated() {
+  return hydrated;
 }
 
 export function getServerSnapshot() {

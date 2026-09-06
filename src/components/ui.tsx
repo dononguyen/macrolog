@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { Nutrients } from "@/lib/types";
 
 /**
  * The handful of shapes every screen repeats. Keeping them here means a
@@ -35,6 +36,44 @@ export function Card({
       )}
       {children}
     </section>
+  );
+}
+
+const MACRO_CHIPS = [
+  { key: "protein", suffix: "P", color: "var(--protein)" },
+  { key: "carbs", suffix: "C", color: "var(--carbs)" },
+  { key: "fat", suffix: "F", color: "var(--fat)" },
+] as const;
+
+/**
+ * Protein, carbs and fat as three coloured dots. Shared by the diary and the
+ * search results so the same food reads the same way in both, rather than as
+ * a card in one place and a run-on sentence in the other.
+ */
+export function MacroChips({
+  nutrients,
+  className = "",
+}: {
+  nutrients: Nutrients;
+  className?: string;
+}) {
+  return (
+    <span className={`flex flex-wrap gap-x-3 gap-y-1 ${className}`}>
+      {MACRO_CHIPS.map(({ key, suffix, color }) => (
+        <span
+          key={key}
+          className="tabular flex items-center gap-1 text-xs text-muted"
+        >
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full"
+            style={{ background: color }}
+          />
+          {Math.round(nutrients[key])}
+          {suffix}
+        </span>
+      ))}
+    </span>
   );
 }
 

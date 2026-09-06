@@ -165,6 +165,31 @@ export function splitOfGoals(goals: Goals): {
 }
 
 /**
+ * The named split a set of goals is closest to, by total difference across the
+ * three shares. Settings uses it to re-open on the split you are actually
+ * running: defaulting the picker back to "balanced" would misreport your
+ * targets, and re-saving would then quietly rewrite them.
+ */
+export function nearestSplit(goals: Goals): MacroSplitKey {
+  const actual = splitOfGoals(goals);
+  let best: MacroSplitKey = "balanced";
+  let bestDistance = Infinity;
+
+  for (const [key, split] of Object.entries(MACRO_SPLITS)) {
+    const distance =
+      Math.abs(actual.protein - split.protein) +
+      Math.abs(actual.carbs - split.carbs) +
+      Math.abs(actual.fat - split.fat);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = key;
+    }
+  }
+
+  return best;
+}
+
+/**
  * The day's calorie allowance. With the MyFitnessPal model switched on,
  * exercise raises it; with it off, exercise is recorded but the target holds.
  */

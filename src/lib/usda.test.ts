@@ -107,3 +107,88 @@ test("an empty or malformed payload yields an empty list", () => {
   assert.deepEqual(toFoods({}), []);
   assert.deepEqual(toFoods({ foods: [] }), []);
 });
+
+// A search for a branded item comes back with the same product listed many
+// times over; before this they filled the result list and pushed real
+// alternatives off the bottom.
+test("the same name and brand is listed once, keeping the best-ranked copy", () => {
+  const foods = toFoods({
+    foods: [
+      {
+        fdcId: 1,
+        description: "Greek Yogurt",
+        brandName: "Chobani",
+        dataType: "Branded",
+        foodNutrients: [{ nutrientId: 1008, value: 59 }],
+      },
+      {
+        fdcId: 2,
+        description: "GREEK YOGURT",
+        brandName: "CHOBANI",
+        dataType: "Branded",
+        foodNutrients: [{ nutrientId: 1008, value: 61 }],
+      },
+      {
+        fdcId: 3,
+        description: "Greek Yogurt",
+        brandName: "Fage",
+        dataType: "Branded",
+        foodNutrients: [{ nutrientId: 1008, value: 97 }],
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    foods.map((f) => f.fdcId),
+    [1, 3],
+  );
+});
+
+test("the same description under different brands is kept apart", () => {
+  const foods = toFoods({
+    foods: [
+      {
+        fdcId: 1,
+        description: "Cheddar",
+        dataType: "Branded",
+        foodNutrients: [{ nutrientId: 1008, value: 400 }],
+      },
+      {
+        fdcId: 2,
+        description: "Cheddar",
+        brandName: "Cathedral City",
+        dataType: "Branded",
+        foodNutrients: [{ nutrientId: 1008, value: 410 }],
+      },
+    ],
+  });
+
+  assert.equal(foods.length, 2);
+});
+
+test("catalogue debris is stripped from the description", () => {
+  assert.equal(
+    toFood({ fdcId: 1, description: "CHICKEN BREAST, UPC: 041268192458" }).name,
+    "Chicken Breast",
+  );
+  assert.equal(
+    toFood({ fdcId: 2, description: "Yogurt, plain,  GTIN 00123456" }).name,
+    "Yogurt, plain",
+  );
+  assert.equal(
+    toFood({ fdcId: 3, description: "Rice ,  white ,  raw ," }).name,
+    "Rice, white, raw",
+  );
+});
+
+test("a description that is only debris still yields a usable name", () => {
+  assert.equal(toFood({ fdcId: 1, description: "UPC: 12345" }).name, "Unnamed food");
+  assert.equal(toFood({ fdcId: 2 }).name, "Unnamed food");
+});
+
+test("digits inside a real name are not mistaken for a barcode", () => {
+  assert.equal(
+    toFood({ fdcId: 1, description: "Milk, 2% milkfat" }).name,
+    "Milk, 2% milkfat",
+  );
+});

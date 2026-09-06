@@ -1,28 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AddButton, type AddAction } from "@/components/AddButton";
 import { AddFoodDialog } from "@/components/AddFoodDialog";
 import { CopyDayDialog } from "@/components/CopyDayDialog";
 import { DaySummary } from "@/components/DaySummary";
 import { ExerciseSection } from "@/components/ExerciseSection";
-import { MealSection } from "@/components/MealSection";
+import { FoodLog } from "@/components/FoodLog";
 import { PageHeader } from "@/components/PageHeader";
 import { QuickAddDialog } from "@/components/QuickAddDialog";
 import { SaveMealDialog } from "@/components/SaveMealDialog";
 import { WaterTracker } from "@/components/WaterTracker";
+import { WeekCalendar } from "@/components/WeekCalendar";
 import { fromKey, labelForKey, shiftKey, todayKey } from "@/lib/date";
-import { MEAL_SLOTS, totalNutrients, type MealSlot } from "@/lib/types";
+import { mealForHour, totalNutrients } from "@/lib/types";
 import { useStore } from "@/lib/useStore";
+
+type Dialog = "food" | "quick" | "copy" | "save";
 
 export default function DiaryPage() {
   const state = useStore();
   const { entries, exercises, goals, settings, water } = state;
 
   const [date, setDate] = useState(todayKey());
-  const [addingTo, setAddingTo] = useState<MealSlot | null>(null);
-  const [savingMeal, setSavingMeal] = useState<MealSlot | null>(null);
-  const [quickAdd, setQuickAdd] = useState(false);
-  const [copying, setCopying] = useState(false);
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const dayEntries = useMemo(
     () => entries.filter((e) => e.date === date),
@@ -32,54 +34,52 @@ export default function DiaryPage() {
     () => exercises.filter((e) => e.date === date),
     [exercises, date],
   );
+  const loggedDates = useMemo(
+    () => new Set(entries.map((e) => e.date)),
+    [entries],
+  );
 
   const totals = useMemo(() => totalNutrients(dayEntries), [dayEntries]);
   const exerciseKcal = dayExercises.reduce((sum, e) => sum + e.kcal, 0);
   const isToday = date === todayKey();
 
+  // Nearest the button first, so the common action is the shortest reach.
+  const actions: AddAction[] = [
+    {
+      label: "Copy a day",
+      icon: <CopyIcon />,
+      onClick: () => setDialog("copy"),
+    },
+    { label: "Quick add", icon: <BoltIcon />, onClick: () => setDialog("quick") },
+    { label: "Add food", icon: <SearchIcon />, onClick: () => setDialog("food") },
+  ];
+
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pb-28 sm:px-6">
+    <main className="mx-auto w-full max-w-2xl px-4 pb-36 sm:px-6">
       <PageHeader
         title="macrolog"
-        subtitle={fromKey(date).toLocaleDateString(undefined, {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        })}
-      />
+        subtitle={labelForKey(date)}
+        action={
+          !isToday && (
+            <button
+              onClick={() => setDate(todayKey())}
+              className="pressable shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-sunken"
+            >
+              Today
+            </button>
+          )
+        }
+      >
+        <div className="mt-2.5">
+          <WeekCalendar
+            selected={date}
+            loggedDates={loggedDates}
+            onSelect={setDate}
+          />
+        </div>
+      </PageHeader>
 
       <div className="stagger space-y-3.5">
-        <nav className="flex items-center justify-between rounded-2xl border border-border bg-surface p-1.5 shadow-[var(--shadow-sm)]">
-          <button
-            onClick={() => setDate(shiftKey(date, -1))}
-            aria-label="Previous day"
-            className="pressable rounded-xl p-2.5 text-muted hover:bg-sunken hover:text-fg"
-          >
-            <Chevron dir="left" />
-          </button>
-
-          <button
-            onClick={() => setDate(todayKey())}
-            disabled={isToday}
-            className="pressable rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-100"
-          >
-            {labelForKey(date)}
-            {!isToday && (
-              <span className="ml-2 text-xs font-medium text-accent-text">
-                Back to today
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setDate(shiftKey(date, 1))}
-            aria-label="Next day"
-            className="pressable rounded-xl p-2.5 text-muted hover:bg-sunken hover:text-fg"
-          >
-            <Chevron dir="right" />
-          </button>
-        </nav>
-
         <DaySummary
           totals={totals}
           goals={goals}
@@ -87,30 +87,12 @@ export default function DiaryPage() {
           settings={settings}
         />
 
-        <div className="flex gap-3">
-          <button
-            onClick={() => setCopying(true)}
-            className="pressable flex-1 rounded-2xl border border-border bg-surface py-2.5 text-sm font-semibold shadow-[var(--shadow-sm)] hover:border-border-strong hover:bg-sunken"
-          >
-            Copy a day
-          </button>
-          <button
-            onClick={() => setQuickAdd(true)}
-            className="pressable flex-1 rounded-2xl border border-border bg-surface py-2.5 text-sm font-semibold shadow-[var(--shadow-sm)] hover:border-border-strong hover:bg-sunken"
-          >
-            Quick add
-          </button>
-        </div>
-
-        {MEAL_SLOTS.map((meal) => (
-          <MealSection
-            key={meal}
-            meal={meal}
-            entries={dayEntries.filter((e) => e.meal === meal)}
-            onAdd={() => setAddingTo(meal)}
-            onSaveAsMeal={() => setSavingMeal(meal)}
-          />
-        ))}
+        <FoodLog
+          title={eatenTitle(date)}
+          entries={dayEntries}
+          onAdd={() => setDialog("food")}
+          onSaveAsMeal={() => setDialog("save")}
+        />
 
         <ExerciseSection
           date={date}
@@ -121,52 +103,85 @@ export default function DiaryPage() {
         <WaterTracker date={date} ml={water[date] ?? 0} goalMl={goals.water} />
       </div>
 
-      {addingTo && (
+      <AddButton actions={actions} open={menuOpen} onOpenChange={setMenuOpen} />
+
+      {dialog === "food" && (
         <AddFoodDialog
           date={date}
-          meal={addingTo}
+          // The clock picks the likely meal; the dialog lets you say otherwise.
+          initialMeal={mealForHour(new Date().getHours())}
           state={state}
-          onClose={() => setAddingTo(null)}
+          onClose={() => setDialog(null)}
         />
       )}
 
-      {savingMeal && (
+      {dialog === "save" && (
         <SaveMealDialog
-          entries={dayEntries.filter((e) => e.meal === savingMeal)}
-          meal={savingMeal}
-          onClose={() => setSavingMeal(null)}
+          entries={dayEntries}
+          onClose={() => setDialog(null)}
         />
       )}
 
-      {quickAdd && (
-        <QuickAddDialog date={date} onClose={() => setQuickAdd(false)} />
+      {dialog === "quick" && (
+        <QuickAddDialog date={date} onClose={() => setDialog(null)} />
       )}
 
-      {copying && (
+      {dialog === "copy" && (
         <CopyDayDialog
           targetDate={date}
           entries={entries}
-          onClose={() => setCopying(false)}
+          onClose={() => setDialog(null)}
         />
       )}
     </main>
   );
 }
 
-function Chevron({ dir }: { dir: "left" | "right" }) {
+/** "Eaten today", "Eaten yesterday", or "Eaten on 3 March". */
+function eatenTitle(date: string): string {
+  const today = todayKey();
+  if (date === today) return "Eaten today";
+  if (date === shiftKey(today, -1)) return "Eaten yesterday";
+  return `Eaten on ${fromKey(date).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+  })}`;
+}
+
+const menuIcon = {
+  width: 20,
+  height: 20,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.9,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+
+function SearchIcon() {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={dir === "left" ? "m15 18-6-6 6-6" : "m9 18 6-6-6-6"} />
+    <svg {...menuIcon}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
+function BoltIcon() {
+  return (
+    <svg {...menuIcon}>
+      <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg {...menuIcon}>
+      <rect x="9" y="9" width="11" height="11" rx="2.5" />
+      <path d="M5 15a2 2 0 0 1-1-1.7V6a2 2 0 0 1 2-2h7.3A2 2 0 0 1 15 5" />
     </svg>
   );
 }

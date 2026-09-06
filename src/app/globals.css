@@ -2,96 +2,112 @@
 
 /* ============================================================ tokens
  *
- * One palette, defined once in light and once in dark. Components only ever
- * reference the semantic names, so a colour change never means grepping for
- * hex codes across the app.
+ * Light-first: the interface is white, near-black ink, and one black accent.
+ * Colour is spent only where it carries data - the macro rings - which is why
+ * the rest of the palette is deliberately monochrome.
+ *
+ * Dark values appear twice below, once for the system preference and once for
+ * an explicit choice. Plain CSS cannot share one block across a media query
+ * and an attribute selector, so the pair is kept adjacent instead.
  */
 :root {
-  /* Surfaces, coolest to nearest. `elevated` is what lifts off the page. */
-  --bg: #f4f6f9;
+  --bg: #fafafa;
   --surface: #ffffff;
   --elevated: #ffffff;
-  --surface-sunken: #eceff5;
-  --border: #e1e6ef;
-  --border-strong: #ccd3e0;
+  --surface-sunken: #f4f4f5;
+  --border: #ececef;
+  --border-strong: #d9d9de;
 
-  /* Ink. `faint` is for text that should recede almost entirely. */
-  --fg: #0e1526;
-  --muted: #5d6a85;
-  --faint: #8492ab;
+  --fg: #09090b;
+  --muted: #64707f;
+  --faint: #8b93a1;
 
-  /* Brand. `accent` fills; `accent-text` is the step that passes contrast
-     as text on a surface, which the fill step does not. */
-  --accent: #059669;
-  --accent-from: #10b981;
-  --accent-to: #059669;
-  /* Gradient for fills carrying text. White on --accent-from is only 3.77:1,
-     so anything with a label on it uses these darker steps instead. */
-  --accent-fill-from: #047857;
-  --accent-fill-to: #056b4d;
-  --accent-text: #047857;
-  --accent-soft: #d7f5e8;
+  /* The accent is ink, not a hue: buttons, the selected day, the add button. */
+  --accent: #09090b;
+  --accent-soft: #f4f4f5;
+  --accent-text: #09090b;
   --on-accent: #ffffff;
 
   --danger: #dc2626;
   --danger-text: #b91c1c;
   --danger-soft: #fee2e2;
 
-  /* Data marks. Validated as a categorical trio against both surfaces:
+  /* Macro marks. Validated as a categorical trio against this surface:
      inside the OKLCH lightness band, chroma floor clear, worst adjacent CVD
-     separation dE 31.3 (protan) / 24.2 (tritan), normal-vision floor 35.3,
-     and all three at 3:1 or better against the card. The same steps pass in
-     dark, so one set serves both modes. */
-  --protein: #2563eb;
-  --carbs: #ea580c;
-  --fat: #9333ea;
+     separation dE 19.3 (deutan) / 17.6 (tritan), normal-vision floor 25.6.
+     Amber falls below 3:1 on white, which the validator permits only with
+     relief - every ring here carries its value as a visible label. */
+  --protein: #e11d48;
+  --carbs: #f59e0b;
+  --fat: #2563eb;
 
-  /* Depth. Two layered shadows read as light, one reads as a smudge. */
-  --shadow-sm: 0 1px 2px rgb(14 21 38 / 0.04), 0 1px 3px rgb(14 21 38 / 0.06);
-  --shadow-md: 0 2px 4px rgb(14 21 38 / 0.04), 0 8px 20px rgb(14 21 38 / 0.08);
-  --shadow-lg: 0 4px 8px rgb(14 21 38 / 0.06), 0 24px 48px rgb(14 21 38 / 0.14);
-  --ring-glow: 0 0 24px rgb(16 185 129 / 0.28);
+  --shadow-sm: 0 1px 2px rgb(9 9 11 / 0.04), 0 1px 3px rgb(9 9 11 / 0.05);
+  --shadow-md: 0 2px 4px rgb(9 9 11 / 0.04), 0 8px 20px rgb(9 9 11 / 0.07);
+  --shadow-lg: 0 4px 8px rgb(9 9 11 / 0.06), 0 24px 48px rgb(9 9 11 / 0.13);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark surfaces step *up* in lightness as they come forward, which is how
-       elevation reads without light sources. */
-    --bg: #0a0c11;
-    --surface: #14171f;
-    --elevated: #1a1e28;
-    --surface-sunken: #1e232e;
-    --border: #262c3a;
-    --border-strong: #38404f;
+  :root:not([data-theme="light"]) {
+    --bg: #09090b;
+    --surface: #161619;
+    --elevated: #1c1c20;
+    --surface-sunken: #212126;
+    --border: #26262c;
+    --border-strong: #3a3a42;
 
-    --fg: #eef1f7;
-    --muted: #93a0b6;
-    --faint: #5f6a7f;
+    --fg: #fafafa;
+    --muted: #9ba3b0;
+    --faint: #6b7280;
 
-    --accent: #10b981;
-    --accent-from: #34d399;
-    --accent-to: #10b981;
-    /* Dark mode puts dark ink on a bright fill, which clears the ratio at the
-       vivid steps, so the two gradients coincide here. */
-    --accent-fill-from: #34d399;
-    --accent-fill-to: #10b981;
-    --accent-text: #34d399;
-    --accent-soft: #06301f;
-    --on-accent: #04241a;
+    --accent: #fafafa;
+    --accent-soft: #212126;
+    --accent-text: #fafafa;
+    --on-accent: #09090b;
 
     --danger: #f05252;
     --danger-text: #fca5a5;
     --danger-soft: #341417;
 
-    --protein: #2563eb;
-    --carbs: #ea580c;
-    --fat: #9333ea;
+    /* Amber steps down for the dark surface: the light step sits outside the
+       dark lightness band. The trio passes every check at these values. */
+    --protein: #e11d48;
+    --carbs: #d97706;
+    --fat: #2563eb;
 
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.4);
-    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 8px 20px rgb(0 0 0 / 0.45);
-    --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.4), 0 24px 48px rgb(0 0 0 / 0.6);
-    --ring-glow: 0 0 28px rgb(16 185 129 / 0.35);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.45);
+    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 20px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 24px 48px rgb(0 0 0 / 0.65);
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #09090b;
+  --surface: #161619;
+  --elevated: #1c1c20;
+  --surface-sunken: #212126;
+  --border: #26262c;
+  --border-strong: #3a3a42;
+
+  --fg: #fafafa;
+  --muted: #9ba3b0;
+  --faint: #6b7280;
+
+  --accent: #fafafa;
+  --accent-soft: #212126;
+  --accent-text: #fafafa;
+  --on-accent: #09090b;
+
+  --danger: #f05252;
+  --danger-text: #fca5a5;
+  --danger-soft: #341417;
+
+  --protein: #e11d48;
+  --carbs: #d97706;
+  --fat: #2563eb;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.45);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.35), 0 8px 20px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 24px 48px rgb(0 0 0 / 0.65);
 }
 
 /* Motion. Expo-out for anything that travels; a light overshoot for anything
@@ -144,9 +160,9 @@ body {
   font-feature-settings: "tnum";
 }
 
-/* Headings read better slightly tightened; body text does not. */
+/* Display figures are set tight; body text is not. */
 .tight {
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 /* A single visible focus treatment, so keyboard users get the same affordance
@@ -154,7 +170,16 @@ body {
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 10px;
+  border-radius: 12px;
+}
+
+/* Horizontal scrollers (the week strip) keep their scrollbar off screen. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* ============================================================ motion */
@@ -211,17 +236,6 @@ body {
   }
 }
 
-/* Sweeps once across a bar as it fills, so a full bar still reads as an event
-   rather than just a static block of colour. */
-@keyframes sheen {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(250%);
-  }
-}
-
 .animate-fade-up {
   animation: fade-up var(--dur-base) var(--ease-out) both;
 }
@@ -232,10 +246,6 @@ body {
 
 .animate-scale-in {
   animation: scale-in var(--dur-base) var(--ease-out) both;
-}
-
-.animate-sheet {
-  animation: sheet-up var(--dur-base) var(--ease-out) both;
 }
 
 .animate-pop {
@@ -280,7 +290,6 @@ body {
   transform: scale(0.97);
 }
 
-/* Cards lift a little on hover, on pointers that can actually hover. */
 @media (hover: hover) {
   .liftable {
     transition:

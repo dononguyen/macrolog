@@ -6,8 +6,21 @@ export const MEAL_LABELS: Record<MealSlot, string> = {
   breakfast: "Breakfast",
   lunch: "Lunch",
   dinner: "Dinner",
-  snack: "Snacks",
+  // Singular: the meal labels one entry now, rather than heading a section.
+  snack: "Snack",
 };
+
+/**
+ * The meal a food is most likely being logged against, from the clock. Used
+ * only as the default selection when adding, so the usual case costs no taps
+ * and an unusual one costs exactly one.
+ */
+export function mealForHour(hour: number): MealSlot {
+  if (hour >= 5 && hour < 11) return "breakfast";
+  if (hour >= 11 && hour < 15) return "lunch";
+  if (hour >= 17 && hour < 22) return "dinner";
+  return "snack";
+}
 
 /**
  * Everything the app tracks about a food, in one flat shape. Keeping all
@@ -263,13 +276,18 @@ export const DEFAULT_GOALS: Goals = {
   water: 2000,
 };
 
+export type Theme = "system" | "light" | "dark";
+
 export type Settings = {
   /** MyFitnessPal's model: exercise raises the day's calorie budget. */
   exerciseAddsCalories: boolean;
   units: "metric" | "imperial";
+  theme: Theme;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   exerciseAddsCalories: true,
   units: "metric",
+  // The design is built light; dark is available but not the default look.
+  theme: "light",
 };
