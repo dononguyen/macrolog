@@ -61,6 +61,7 @@ src/
     settings/                   profile, calculated targets, preferences
     layout.tsx                  shell, tab bar, pre-paint theme stamp
     api/foods/search/route.ts   proxies USDA search, keeps the key server-side
+  proxy.ts                      issues the per-request CSP nonce
   components/                   charts, dialogs, and shared UI primitives
   lib/
     types.ts                    the model and the arithmetic over it
@@ -70,7 +71,7 @@ src/
     usda.ts                     mapping USDA's payload onto our model
     date.ts                     local calendar days as YYYY-MM-DD keys
     rate-limit.ts               throttles the search route per client
-    theme-script.ts             the inlined theme stamp, hashed by the CSP
+    theme-script.ts             the inlined theme stamp, nonced by the CSP
     useStore.ts                 React binding for the store
     useCountUp.ts               animates a figure to its new value
 ```
