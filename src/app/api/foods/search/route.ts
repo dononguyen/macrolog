@@ -20,6 +20,18 @@ const USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
 /** DEMO_KEY works without signup but is rate limited to ~30 requests/hour. */
 const DEMO_KEY = "DEMO_KEY";
 
+const isDev = process.env.NODE_ENV === "development";
+
+// A deployed copy running on DEMO_KEY will stop searching within minutes of
+// more than one person using it. Say so once, in the build log, rather than
+// leaving the owner to diagnose it from users reporting that search is broken.
+if (!isDev && !process.env.USDA_API_KEY?.trim()) {
+  console.warn(
+    "[macrolog] USDA_API_KEY is not set. Food search will fall back to the " +
+      "shared DEMO_KEY and be rate limited after roughly 30 requests an hour.",
+  );
+}
+
 /** Long enough for any real food name; short enough to be a poor payload. */
 const MAX_QUERY_LENGTH = 100;
 
@@ -87,16 +99,23 @@ export async function GET(request: Request) {
 
   if (response.status === 429) {
     return jsonError(
-      apiKey === DEMO_KEY
-        ? "The shared demo key is rate limited. Add your own USDA_API_KEY to .env.local — see README."
-        : "USDA rate limit reached. Try again shortly.",
+      // Someone testing a deployed copy cannot act on a note about .env.local,
+      // and telling a stranger how the key is configured is free reconnaissance.
+      // The actionable version is kept for whoever is running it locally.
+      isDev
+        ? apiKey === DEMO_KEY
+          ? "The shared demo key is rate limited. Add your own USDA_API_KEY to .env.local — see README."
+          : "USDA rate limit reached. Try again shortly."
+        : "Food search is busy right now. Try again in a moment.",
       429,
     );
   }
 
   if (response.status === 403) {
     return jsonError(
-      "USDA rejected the API key. Check USDA_API_KEY in .env.local.",
+      isDev
+        ? "USDA rejected the API key. Check USDA_API_KEY in .env.local."
+        : "Food search is unavailable right now.",
       502,
     );
   }

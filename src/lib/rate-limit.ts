@@ -2,11 +2,12 @@
  * A sliding-window rate limiter held in process memory.
  *
  * Scope, stated plainly: this protects a single running instance. Behind
- * several instances or on a serverless platform each one keeps its own
- * counters, so the effective limit multiplies by the instance count. That is
- * still worth having — it stops one client hammering one instance — but a
- * deployment that needs a hard global limit wants a shared store (Redis, or
- * the platform's own limiter) instead.
+ * several instances, or on a serverless platform where a cold start begins
+ * with an empty map, the effective limit multiplies by however many instances
+ * are live. It still does the main job — one client cannot sit in a loop
+ * against a warm instance — but it is a throttle on casual abuse, not a hard
+ * global cap. A deployment that needs the latter wants a shared store (Redis
+ * or the platform's own limiter) behind the same interface.
  */
 
 export type RateLimitResult = {
@@ -93,10 +94,13 @@ export function createRateLimiter({
 /**
  * Best-effort client identity.
  *
- * X-Forwarded-For is set by whatever proxy sits in front of the app, and a
- * client can send it directly if nothing overwrites it — so this is a throttle
- * on casual abuse, not an authentication mechanism. Never use it to authorise
- * anything.
+ * How much this can be trusted depends entirely on what sits in front of the
+ * app. A managed platform (Vercel, Cloudflare, most load balancers) overwrites
+ * X-Forwarded-For with the real client address, and there the left-most entry
+ * is sound. Running the server directly on an open port, a client can simply
+ * send the header itself and pick its own bucket.
+ *
+ * So: fine for rate limiting, never for authorisation.
  */
 export function clientKey(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");

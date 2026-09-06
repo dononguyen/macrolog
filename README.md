@@ -89,9 +89,43 @@ because those numbers genuinely did not exist when the food was logged.
 
 ## Data and privacy
 
-Everything is stored in your own browser. There is no account, no server-side
-database, and nothing is uploaded. Clearing site data clears your log, and the
-data does not follow you to another device.
+Your log, goals, weight and profile are stored in your own browser. There is no
+account and no server-side database, so each person who opens the app has their
+own data and can never see anyone else's. Clearing site data clears your log,
+and it does not follow you to another device.
+
+One thing does leave the device: when you search for a food, the words you type
+are sent to the server and on to USDA to look up. What you actually log is
+never sent anywhere.
+
+Because there is no encryption at rest, anyone with access to your browser
+profile can read your log. That is the trade for having no accounts.
+
+## Deploying
+
+The app is a standard Next.js project with one server route, so anything that
+runs Node will host it. Vercel needs no configuration:
+
+1. Push the branch to GitHub (the repo can be private).
+2. At [vercel.com/new](https://vercel.com/new), import the repository. Vercel
+   detects Next.js and fills in the build settings itself.
+3. Add an environment variable **`USDA_API_KEY`** with a free key from
+   [the USDA signup](https://fdc.nal.usda.gov/api-key-signup.html), for the
+   Production, Preview and Development environments.
+4. Deploy. Anyone with the URL can then use it — no account, no setup.
+
+**Set the key before sharing the link.** Without it the app falls back to
+USDA's shared `DEMO_KEY`, which allows about 30 requests an hour *in total*;
+search will stop working within minutes of a second person trying it. A
+personal key allows 3,600 an hour, which is ample for a test group. The build
+log warns if the variable is missing.
+
+Note that every tester's searches spend that one key, since it lives on the
+server. The `/api/foods/search` route is rate limited per client to blunt
+abuse, but that limiter is held in memory: on serverless, a cold start begins
+with an empty counter, so treat it as a throttle rather than a hard cap. If the
+link spreads further than intended, move the limiter to a shared store — it is
+behind a small interface in `src/lib/rate-limit.ts` for exactly that reason.
 
 ## Scripts
 
