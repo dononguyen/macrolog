@@ -154,7 +154,7 @@ export function Button({
 }) {
   const styles = {
     primary:
-      "bg-[linear-gradient(180deg,var(--accent-fill-from),var(--accent-fill-to))] text-on-accent shadow-[var(--shadow-sm)] hover:brightness-[1.08]",
+      "bg-accent text-on-accent shadow-[var(--shadow-sm)] hover:opacity-90",
     secondary:
       "border border-border bg-surface hover:border-border-strong hover:bg-sunken",
     ghost: "text-accent-text hover:bg-sunken",
@@ -246,7 +246,7 @@ export function Toggle({
         onClick={() => onChange(!checked)}
         className={`pressable relative mt-0.5 h-7 w-12 shrink-0 rounded-full ${
           checked
-            ? "bg-[linear-gradient(180deg,var(--accent-fill-from),var(--accent-fill-to))]"
+            ? "bg-accent"
             : "border border-border bg-sunken"
         }`}
       >

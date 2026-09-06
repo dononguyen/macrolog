@@ -58,7 +58,9 @@ export default function SettingsPage() {
   const imperial = settings.units === "imperial";
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pb-28 sm:px-6">
+    // The generous bottom padding leaves room for the save bar, which floats
+    // above the tab bar and would otherwise cover the last card.
+    <main className="mx-auto w-full max-w-2xl px-4 pb-44 sm:px-6">
       <PageHeader title="Settings" subtitle="Your profile, targets and preferences" />
 
       <div className="stagger space-y-3.5">
@@ -418,24 +420,44 @@ function ProfilePlan({
             ))}
           </dl>
 
-          <Button
-            className="w-full"
-            disabled={stored}
-            onClick={() => {
-              setProfile(draft);
-              setGoals(projected);
-            }}
-          >
-            {stored ? "These targets are saved" : "Save and apply these targets"}
-          </Button>
-
-          {!stored && (
-            <p className="text-center text-xs text-muted">
-              Your details and targets are not kept until you save.
-            </p>
-          )}
+          <p className="text-center text-xs text-muted">
+            {stored
+              ? "These are your saved targets."
+              : "These apply once you save."}
+          </p>
         </div>
       </Card>
+
+      {/*
+        * The fields and the targets they produce are one form split across two
+        * cards, so a button inside either one is missable from the other. This
+        * follows the screen instead, and only exists when there is something
+        * to keep.
+        */}
+      {!stored && (
+        <div
+          className="animate-fade-up fixed inset-x-0 z-40 px-4 sm:px-6"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 4.75rem)" }}
+        >
+          <div className="mx-auto flex max-w-2xl items-center gap-3 rounded-2xl border border-border bg-elevated/90 p-2.5 pl-4 shadow-[var(--shadow-lg)] backdrop-blur-xl">
+            <p className="min-w-0 flex-1 text-sm font-medium">
+              Unsaved changes
+              <span className="block text-xs font-normal text-muted">
+                Your details and targets are not kept until you save.
+              </span>
+            </p>
+            <Button
+              className="shrink-0"
+              onClick={() => {
+                setProfile(draft);
+                setGoals(projected);
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
